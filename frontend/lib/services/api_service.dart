@@ -5,67 +5,72 @@ import '../models/cluster_model.dart';
 import '../models/latency_model.dart';
 
 class ElectionLeaderApiService {
-  final String baseUrl;
+  String baseUrl;
 
   ElectionLeaderApiService({this.baseUrl = 'http://localhost:8001'});
 
-  Future<IdResponse?> getNextId() async {
+  Future<IdResponse?> getNextId({String? overrideUrl}) async {
+    final targetUrl = overrideUrl ?? baseUrl;
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/v1/id/next'));
+      final response = await http
+          .get(Uri.parse('\/api/v1/id/next'))
+          .timeout(const Duration(milliseconds: 1500));
       if (response.statusCode == 200) {
         return IdResponse.fromJson(jsonDecode(response.body));
       }
-    } catch (e) {
-      // Backend offline or error
-    }
+    } catch (_) {}
     return null;
   }
 
-  Future<BatchResponse?> getBatch(int count) async {
+  Future<BatchResponse?> getBatch(int count, {String? overrideUrl}) async {
+    final targetUrl = overrideUrl ?? baseUrl;
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/v1/id/batch?count=$count'));
+      final response = await http
+          .get(Uri.parse('\/api/v1/id/batch?count='))
+          .timeout(const Duration(milliseconds: 2500));
       if (response.statusCode == 200) {
         return BatchResponse.fromJson(jsonDecode(response.body));
       }
-    } catch (e) {
-      // Backend offline or error
-    }
+    } catch (_) {}
     return null;
   }
 
-  Future<ParsedId?> decodeId(String id) async {
+  Future<ParsedId?> decodeId(String id, {String? overrideUrl}) async {
+    final targetUrl = overrideUrl ?? baseUrl;
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/v1/id/decode/$id'));
+      final response = await http
+          .get(Uri.parse('\/api/v1/id/decode/'))
+          .timeout(const Duration(milliseconds: 1500));
       if (response.statusCode == 200) {
         return ParsedId.fromJson(jsonDecode(response.body));
       }
-    } catch (e) {
-      // Backend offline or error
-    }
+    } catch (_) {}
     return null;
   }
 
-  Future<ClusterStatus?> getClusterStatus() async {
+  Future<ClusterStatus?> getClusterStatus({String? overrideUrl}) async {
+    final targetUrl = overrideUrl ?? baseUrl;
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/v1/cluster/status'));
+      final response = await http
+          .get(Uri.parse('\/api/v1/cluster/status'))
+          .timeout(const Duration(milliseconds: 1500));
       if (response.statusCode == 200) {
         return ClusterStatus.fromJson(jsonDecode(response.body));
       }
-    } catch (e) {
-      // Backend offline or error
-    }
+    } catch (_) {}
     return null;
   }
 
-  Future<LatencyMetrics?> getLatencyMetrics() async {
+  Future<LatencyMetrics?> getLatencyMetrics({String? overrideUrl}) async {
+    final targetUrl = overrideUrl ?? baseUrl;
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/v1/metrics/latency'));
+      final response = await http
+          .get(Uri.parse('\/api/v1/metrics/latency'))
+          .timeout(const Duration(milliseconds: 1500));
       if (response.statusCode == 200) {
         return LatencyMetrics.fromJson(jsonDecode(response.body));
       }
-    } catch (e) {
-      // Backend offline or error
-    }
+    } catch (_) {}
     return null;
   }
 }

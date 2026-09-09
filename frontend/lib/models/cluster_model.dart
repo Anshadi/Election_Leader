@@ -30,3 +30,31 @@ class ClusterStatus {
     );
   }
 }
+
+class NodeInstanceInfo {
+  final int index;
+  final int port;
+  final String url;
+  final bool isOnline;
+  final bool isLeader;
+  final int nodeId;
+  final String strategy;
+  final bool zkConnected;
+  final bool redisConnected;
+  final double latencyMicros;
+  final String? lastGeneratedId;
+
+  NodeInstanceInfo({
+    required this.index,
+    required this.port,
+    required this.url,
+    required this.isOnline,
+    required this.isLeader,
+    required this.nodeId,
+    required this.strategy,
+    required this.zkConnected,
+    required this.redisConnected,
+    this.latencyMicros = 0.0,
+    this.lastGeneratedId,
+  });
+}
