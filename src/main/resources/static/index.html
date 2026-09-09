@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ElectionLeader - Distributed Unique ID Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0a0d14;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --bg-card-hover: rgba(24, 32, 50, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-indigo: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --glow-indigo: 0 0 25px rgba(99, 102, 241, 0.35);
+      --glow-cyan: 0 0 25px rgba(6, 182, 212, 0.35);
+      --glow-emerald: 0 0 25px rgba(16, 185, 129, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.1) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.05) 0%, transparent 60%);
+      background-attachment: fixed;
+      padding: 2rem 1.5rem;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: var(--glow-indigo);
+    }
+
+    .brand-title h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #fff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-title p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .cluster-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+    }
+
+    .badge-leader {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .badge-emerald {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .badge-cyan {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: rgba(6, 182, 212, 0.4);
+      color: #38bdf8;
+    }
+
+    .grid-dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 960px) {
+      .grid-dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title span.title-icon {
+      margin-right: 0.5rem;
+    }
+
+    /* Generator Controls */
+    .controls-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, var(--accent-indigo), #4f46e5);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.4rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: var(--glow-indigo);
+      transition: all 0.2s ease;
+    }
+
+    button.btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.55);
+    }
+
+    button.btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.75rem 1.2rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button.btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    button.btn-toggle-stream.active {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #f87171;
+    }
+
+    /* ID Result Box */
+    .id-display {
+      background: rgba(10, 14, 23, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .id-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 0.03em;
+      word-break: break-all;
+    }
+
+    .id-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .id-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .id-meta-item span.label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .id-meta-item span.value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Bit Breakdown Visualization */
+    .bit-visualizer {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+
+    .bit-track {
+      display: flex;
+      gap: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.6rem;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .bit-segment {
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .bit-sign {
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+    }
+
+    .bit-timestamp {
+      background: rgba(6, 182, 212, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      flex: 3;
+    }
+
+    .bit-node {
+      background: rgba(168, 85, 247, 0.2);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      flex: 1.5;
+    }
+
+    .bit-sequence {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      flex: 2;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+
+    .stat-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .stat-box .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-top: 0.25rem;
+    }
+
+    .stat-box .stat-lbl {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Stream Feed */
+    .stream-feed {
+      height: 200px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 0.35rem;
+    }
+
+    .stream-item {
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .stream-item:first-child {
+      color: #38bdf8;
+      background: rgba(6, 182, 212, 0.08);
+      font-weight: 600;
+    }
+
+    input.input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border 0.2s ease;
+    }
+
+    input.input-field:focus {
+      border-color: var(--accent-indigo);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-title">
+          <h1>ElectionLeader Engine</h1>
+          <p>Adaptive Distributed ID Generator • ZooKeeper Leader Election • Redis Leaf Segments</p>
+        </div>
+      </div>
+      <div class="cluster-status-bar" id="clusterStatusBar">
+        <span class="badge badge-leader" id="leaderBadge">👑 LEADER</span>
+        <span class="badge badge-cyan" id="nodeBadge">Node #0</span>
+        <span class="badge badge-emerald" id="strategyBadge">Strategy: AUTO</span>
+        <span class="badge" id="zkBadge">ZK: Standalone</span>
+      </div>
+    </header>
+
+    <main class="grid-dashboard">
+      <!-- Card 1: ID Generator Controller -->
+      <section class="card">
+        <div class="card-title">
+          <span><span class="title-icon">🚀</span> Live ID Generator</span>
+          <span class="badge badge-cyan" id="rateBadge">0 IDs/sec</span>
+        </div>
+
+        <div class="controls-row">
+          <button class="btn-primary" id="btnNextId">Generate Single ID</button>
+          <button class="btn-secondary" onclick="generateBatch(100)">Batch (100)</button>
+          <button class="btn-secondary" onclick="generateBatch(1000)">Batch (1,000)</button>
+          <button class="btn-secondary btn-toggle-stream" id="btnStream">Live Stream</button>
+        </div>
+
+        <div class="id-display">
+          <div class="id-number" id="currentId">---</div>
+          <div class="id-meta-grid">
+            <div class="id-meta-item">
+              <span class="label">Time (UTC)</span>
+              <span class="value" id="metaTime">--</span>
+            </div>
+            <div class="id-meta-item">
+              <span class="label">Node ID</span>
+              <span class="value" id="metaNode">--</span>
+            </div>
+            <div class="id-meta-item">
+              <span class="label">Sequence</span>
+              <span class="value" id="metaSeq">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 63-Bit Layout Visualizer -->
+        <div class="bit-visualizer">
+          <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">64-bit Packed Bit Structure:</span>
+          <div class="bit-track">
+            <div class="bit-segment bit-sign">1b (0)</div>
+            <div class="bit-segment bit-timestamp" id="bitTimestamp">35-Bit Timestamp</div>
+            <div class="bit-segment bit-node" id="bitNode">12-Bit Node</div>
+            <div class="bit-segment bit-sequence" id="bitSeq">16-Bit Seq</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card 2: Interactive ID Decoder -->
+      <section class="card">
+        <div class="card-title">
+          <span><span class="title-icon">🔍</span> 64-Bit ID Decoder</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Paste any generated 64-bit ID to reverse-engineer its internal timestamp, node origin, and millisecond sequence:
+        </p>
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
+          <input type="text" class="input-field" id="decodeInput" placeholder="e.g. 5201948271034368" />
+          <button class="btn-secondary" onclick="decodeInputId()">Decode</button>
+        </div>
+        <div class="id-display" id="decodeOutput" style="font-size: 0.88rem;">
+          <div style="color: var(--text-muted); text-align: center; padding: 0.5rem;">Enter an ID above to inspect bit breakdown</div>
+        </div>
+      </section>
+
+      <!-- Card 3: Latency Percentile Monitor (HdrHistogram) -->
+      <section class="card">
+        <div class="card-title">
+          <span><span class="title-icon">📊</span> Latency & SLA Monitor (HdrHistogram)</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Microseconds (µs)</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-lbl">P50 (Median)</div>
+            <div class="stat-val" id="latP50">0 µs</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-lbl">P90</div>
+            <div class="stat-val" id="latP90">0 µs</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-lbl">P99</div>
+            <div class="stat-val" id="latP99">0 µs</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-lbl">P99.9</div>
+            <div class="stat-val" id="latP999">0 µs</div>
+          </div>
+        </div>
+        <div style="margin-top: 1.25rem; display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary);">
+          <span>Total Generated: <b id="totalGenCount" style="color: white;">0</b></span>
+          <span>Max Latency: <b id="latMax" style="color: white;">0 µs</b></span>
+          <span>Mean Latency: <b id="latMean" style="color: white;">0 µs</b></span>
+        </div>
+      </section>
+
+      <!-- Card 4: Reactive Stream Realtime Feed -->
+      <section class="card">
+        <div class="card-title">
+          <span><span class="title-icon">⚡</span> Reactive Event Stream Feed</span>
+          <span class="badge badge-emerald">WebFlux SSE</span>
+        </div>
+        <div class="stream-feed" id="streamFeed">
+          <div style="color: var(--text-muted); text-align: center; margin-top: 4rem;">Waiting for ID stream...</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    let isStreaming = false;
+    let streamInterval = null;
+    let streamCountWindow = 0;
+
+    async function fetchClusterStatus() {
+      try {
+        const res = await fetch('/api/v1/cluster/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        document.getElementById('nodeBadge').innerText = `Node #${data.nodeId}`;
+        document.getElementById('strategyBadge').innerText = `Strategy: ${data.activeStrategy}`;
+        document.getElementById('zkBadge').innerText = data.zookeeperConnected ? 'ZK: Connected' : 'ZK: Standalone';
+        
+        const leaderBadge = document.getElementById('leaderBadge');
+        if (data.isLeader) {
+          leaderBadge.innerText = '👑 CLUSTER LEADER';
+          leaderBadge.className = 'badge badge-leader';
+        } else {
+          leaderBadge.innerText = '🛡️ STANDBY NODE';
+          leaderBadge.className = 'badge';
+        }
+      } catch (err) {
+        console.warn('Cluster status fetch error', err);
+      }
+    }
+
+    async function fetchLatencyMetrics() {
+      try {
+        const res = await fetch('/api/v1/metrics/latency');
+        if (!res.ok) return;
+        const m = await res.json();
+        document.getElementById('latP50').innerText = `${m.p50Micros} µs`;
+        document.getElementById('latP90').innerText = `${m.p90Micros} µs`;
+        document.getElementById('latP99').innerText = `${m.p99Micros} µs`;
+        document.getElementById('latP999').innerText = `${m.p999Micros} µs`;
+        document.getElementById('latMax').innerText = `${m.maxMicros} µs`;
+        document.getElementById('latMean').innerText = `${m.meanMicros.toFixed(1)} µs`;
+        document.getElementById('totalGenCount').innerText = m.totalGenerated.toLocaleString();
+      } catch (err) {
+        console.warn('Metrics fetch error', err);
+      }
+    }
+
+    async function generateSingle() {
+      try {
+        const res = await fetch('/api/v1/id/next');
+        const data = await res.json();
+        updateIdDisplay(data);
+        pushStreamFeed(data.id, data.strategy);
+        streamCountWindow++;
+      } catch (err) {
+        console.error('Error generating ID', err);
+      }
+    }
+
+    async function generateBatch(count) {
+      try {
+        const res = await fetch(`/api/v1/id/batch?count=${count}`);
+        const data = await res.json();
+        if (data.ids && data.ids.length > 0) {
+          const lastId = data.ids[data.ids.length - 1];
+          await decodeAndDisplay(lastId);
+          pushStreamFeed(`Generated ${data.count} IDs in ${data.durationMicros.toFixed(1)} µs`, data.strategy);
+          streamCountWindow += data.count;
+        }
+      } catch (err) {
+        console.error('Error in batch generation', err);
+      }
+    }
+
+    async function decodeAndDisplay(id) {
+      try {
+        const res = await fetch(`/api/v1/id/decode/${id}`);
+        const data = await res.json();
+        updateIdDisplay({
+          id: data.id,
+          dateTime: data.dateTime,
+          nodeId: data.nodeId,
+          sequence: data.sequence
+        });
+      } catch (err) {}
+    }
+
+    function updateIdDisplay(data) {
+      document.getElementById('currentId').innerText = data.id;
+      document.getElementById('metaTime').innerText = data.dateTime ? data.dateTime.split('T')[1].replace('Z','') : '--';
+      document.getElementById('metaNode').innerText = `#${data.nodeId}`;
+      document.getElementById('metaSeq').innerText = data.sequence;
+      document.getElementById('decodeInput').value = data.id;
+    }
+
+    async function decodeInputId() {
+      const val = document.getElementById('decodeInput').value.trim();
+      if (!val) return;
+      try {
+        const res = await fetch(`/api/v1/id/decode/${val}`);
+        if (!res.ok) {
+          document.getElementById('decodeOutput').innerHTML = `<div style="color: #f87171;">Invalid ID format or out of bounds</div>`;
+          return;
+        }
+        const data = await res.json();
+        document.getElementById('decodeOutput').innerHTML = `
+          <div style="font-family: 'JetBrains Mono';">
+            <div><b>ID:</b> <span style="color: #38bdf8;">${data.id}</span></div>
+            <div><b>UTC Time:</b> ${data.dateTime} (Delta: ${data.timestampDelta} ms)</div>
+            <div><b>Node ID:</b> ${data.nodeId} | <b>Sequence:</b> ${data.sequence}</div>
+            <div style="margin-top: 0.5rem; word-break: break-all; font-size: 0.75rem; color: #94a3b8;">
+              <b>Binary [Sign | Timestamp(35) | Node(12) | Seq(16)]:</b><br/>
+              <code>${data.binaryRepresentation}</code>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        document.getElementById('decodeOutput').innerHTML = `<div style="color: #f87171;">Error decoding ID</div>`;
+      }
+    }
+
+    function pushStreamFeed(text, strategy) {
+      const feed = document.getElementById('streamFeed');
+      const item = document.createElement('div');
+      item.className = 'stream-item';
+      item.innerHTML = `<span>${text}</span> <span style="font-size: 0.75rem; color: #64748b;">${strategy || ''}</span>`;
+      feed.insertBefore(item, feed.firstChild);
+      if (feed.childNodes.length > 50) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
+
+    function toggleStream() {
+      const btn = document.getElementById('btnStream');
+      isStreaming = !isStreaming;
+      if (isStreaming) {
+        btn.classList.add('active');
+        btn.innerText = 'Stop Stream';
+        streamInterval = setInterval(() => {
+          generateSingle();
+        }, 100);
+      } else {
+        btn.classList.remove('active');
+        btn.innerText = 'Live Stream';
+        if (streamInterval) clearInterval(streamInterval);
+      }
+    }
+
+    // Rate calculation loop
+    setInterval(() => {
+      document.getElementById('rateBadge').innerText = `${streamCountWindow} IDs/sec`;
+      streamCountWindow = 0;
+    }, 1000);
+
+    document.getElementById('btnNextId').addEventListener('click', generateSingle);
+    document.getElementById('btnStream').addEventListener('click', toggleStream);
+
+    // Initial setup and recurring polls
+    fetchClusterStatus();
+    fetchLatencyMetrics();
+    generateSingle();
+    setInterval(fetchClusterStatus, 4000);
+    setInterval(fetchLatencyMetrics, 2000);
+  </script>
+</body>
+</html>
