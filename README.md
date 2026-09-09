@@ -178,5 +178,3 @@ GET /api/v1/metrics/latency
 
 ---
 
-## 📜 License
-MIT License.
