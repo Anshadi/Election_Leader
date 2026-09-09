@@ -25,7 +25,7 @@ class TelemetryView extends StatelessWidget {
       title: 'LATENCY SLA & METRICS',
       badge: 'HDRHISTOGRAM',
       trailing: Text(
-        'TOTAL: \ IDs',
+        'TOTAL: ' + total.toString() + ' IDs',
         style: GoogleFonts.jetBrainsMono(
           fontSize: 9.5,
           fontWeight: FontWeight.w600,
@@ -37,34 +37,34 @@ class TelemetryView extends StatelessWidget {
         children: [
           _PercentileRow(
             label: 'P50 (MEDIAN)',
-            value: '\ µs',
+            value: p50.toStringAsFixed(0) + ' µs',
             ratio: (p50 / 1000.0).clamp(0.05, 1.0),
             color: AppColors.green,
           ),
           const SizedBox(height: 8),
           _PercentileRow(
             label: 'P90 SLA',
-            value: '\ µs',
+            value: p90.toStringAsFixed(0) + ' µs',
             ratio: (p90 / 2000.0).clamp(0.1, 1.0),
             color: AppColors.blue,
           ),
           const SizedBox(height: 8),
           _PercentileRow(
             label: 'P99 SLA',
-            value: '\ µs',
+            value: p99.toStringAsFixed(0) + ' µs',
             ratio: (p99 / 5000.0).clamp(0.2, 1.0),
             color: AppColors.accent,
           ),
           const SizedBox(height: 8),
           _PercentileRow(
             label: 'P99.9 MAX',
-            value: '\ µs',
+            value: p999.toStringAsFixed(0) + ' µs',
             ratio: (p999 / 10000.0).clamp(0.3, 1.0),
             color: AppColors.amber,
           ),
           const SizedBox(height: 14),
 
-          // Aggregate Summary Strip (Wrap to avoid any overflow)
+          // Aggregate Summary Strip
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -77,8 +77,8 @@ class TelemetryView extends StatelessWidget {
               runSpacing: 6,
               alignment: WrapAlignment.spaceBetween,
               children: [
-                _StatItem(label: 'MEAN LATENCY', value: '\ µs'),
-                _StatItem(label: 'MAX SPIKE', value: '\ µs'),
+                _StatItem(label: 'MEAN LATENCY', value: mean.toStringAsFixed(1) + ' µs'),
+                _StatItem(label: 'MAX SPIKE', value: max.toStringAsFixed(0) + ' µs'),
                 const _StatItem(label: 'STATUS', value: 'ONLINE (:8001)'),
               ],
             ),

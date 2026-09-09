@@ -29,7 +29,7 @@ class DashboardProvider extends ChangeNotifier {
 
   void init() {
     refreshAll();
-    pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       pollClusterAndMetrics();
     });
     qpsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -41,7 +41,7 @@ class DashboardProvider extends ChangeNotifier {
 
   Future<void> refreshAll() async {
     await pollClusterAndMetrics();
-    await generateSingleId();
+    await generateSingleId(isManual: true);
   }
 
   Future<void> pollClusterAndMetrics() async {
@@ -52,15 +52,17 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> generateSingleId() async {
-    isGenerating = true;
-    notifyListeners();
+  Future<void> generateSingleId({bool isManual = false}) async {
+    if (isManual) {
+      isGenerating = true;
+      notifyListeners();
+    }
 
     final res = await apiService.getNextId();
     if (res != null) {
       currentId = res;
       qpsCounter++;
-      pushFeed('Generated ID: ', res.strategy);
+      pushFeed('Generated ID: ' + res.id.toString(), res.strategy);
 
       // Auto-decode the current ID
       final parsed = await apiService.decodeId(res.id.toString());
@@ -69,7 +71,9 @@ class DashboardProvider extends ChangeNotifier {
       }
     }
 
-    isGenerating = false;
+    if (isManual) {
+      isGenerating = false;
+    }
     notifyListeners();
   }
 
@@ -80,7 +84,7 @@ class DashboardProvider extends ChangeNotifier {
     final res = await apiService.getBatch(count);
     if (res != null && res.ids.isNotEmpty) {
       qpsCounter += res.count;
-      pushFeed('Batch: generated  IDs in  µs', res.strategy);
+      pushFeed('Batch: generated ' + res.count.toString() + ' IDs in ' + res.durationMicros.toStringAsFixed(1) + ' µs', res.strategy);
 
       final lastId = res.ids.last;
       final parsed = await apiService.decodeId(lastId.toString());
@@ -108,7 +112,7 @@ class DashboardProvider extends ChangeNotifier {
     final res = await apiService.decodeId(cleanInput);
     if (res != null) {
       parsedId = res;
-      pushFeed('Decoded ID: ', 'Node:  | Seq: ');
+      pushFeed('Decoded ID: ' + res.id.toString(), 'Node: ' + res.nodeId.toString() + ' | Seq: ' + res.sequence.toString());
       notifyListeners();
     }
   }
@@ -118,7 +122,7 @@ class DashboardProvider extends ChangeNotifier {
     if (isStreaming) {
       pushFeed('Started real-time streaming generator', 'Target: ~100 QPS');
       streamTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-        generateSingleId();
+        generateSingleId(isManual: false);
       });
     } else {
       pushFeed('Stopped real-time streaming generator', 'Standby mode');

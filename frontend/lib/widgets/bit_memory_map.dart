@@ -179,14 +179,14 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
       case 1:
         fieldName = 'Epoch Timestamp Delta (ms)';
         bitRange = 'Bits 62..28 (35 Bits) | Mask: 0x7FFFFFFFF0000000';
-        decVal = '\ ms elapsed (UTC: \)';
+        decVal = deltaMs.toString() + ' ms elapsed (UTC: ' + timeStr + ')';
         formula = '(id >>> 28) & 0x7FFFFFFFFL';
         accentColor = AppColors.bitTimestamp;
         break;
       case 2:
         fieldName = 'Cluster Node Identifier';
         bitRange = 'Bits 27..16 (12 Bits) | Mask: 0x000000000FFF0000';
-        decVal = 'Node #\ (0 to 4,095)';
+        decVal = 'Node #' + nodeId.toString() + ' (0 to 4,095)';
         formula = '(id >>> 16) & 0x0FFFL';
         accentColor = AppColors.bitNode;
         break;
@@ -194,7 +194,7 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
       default:
         fieldName = 'Millisecond Sequence Counter';
         bitRange = 'Bits 15..0 (16 Bits) | Mask: 0x000000000000FFFF';
-        decVal = 'Seq #\ (0 to 65,535)';
+        decVal = 'Seq #' + seq.toString() + ' (0 to 65,535)';
         formula = 'id & 0xFFFFL';
         accentColor = AppColors.bitSequence;
         break;
@@ -235,7 +235,7 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Decoded Value: ',
+            'Decoded Value: ' + decVal,
             style: GoogleFonts.jetBrainsMono(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -244,7 +244,7 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Shift/Mask Expression: ',
+            'Shift/Mask Expression: ' + formula,
             style: GoogleFonts.jetBrainsMono(
               fontSize: 10.5,
               color: AppColors.textSecondary,
@@ -252,7 +252,7 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
           ),
           const SizedBox(height: 6),
           SelectableText(
-            'Binary: ',
+            'Binary: ' + binary,
             style: GoogleFonts.jetBrainsMono(
               fontSize: 9.5,
               color: AppColors.textMuted,

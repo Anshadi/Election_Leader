@@ -76,7 +76,7 @@ class IdGeneratorView extends StatelessWidget {
                       SelectableText(
                         idStr,
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           letterSpacing: 0.8,
@@ -93,7 +93,7 @@ class IdGeneratorView extends StatelessWidget {
                     Clipboard.setData(ClipboardData(text: idStr));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('ID \ copied to clipboard', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
+                        content: Text('ID ' + idStr + ' copied to clipboard', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                         duration: const Duration(seconds: 1),
                         behavior: SnackBarBehavior.floating,
                         backgroundColor: AppColors.surfaceElevated,
@@ -112,9 +112,9 @@ class IdGeneratorView extends StatelessWidget {
             runSpacing: 8,
             children: [
               _ActionButton(
-                label: state.isGenerating ? 'Generating...' : 'Generate Next',
+                label: 'Generate Next',
                 isPrimary: true,
-                onTap: state.isGenerating ? () {} : () => state.generateSingleId(),
+                onTap: () => state.generateSingleId(isManual: true),
               ),
               _ActionButton(
                 label: 'Batch 100',
@@ -133,7 +133,7 @@ class IdGeneratorView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Technical Parameter Grid (Wrapped to avoid any flex overflow)
+          // Technical Parameter Grid
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -152,11 +152,11 @@ class IdGeneratorView extends StatelessWidget {
                 ),
                 _ParamColumn(
                   label: 'NODE ID',
-                  value: id != null ? '#' : '#0',
+                  value: id != null ? '#' + id.nodeId.toString() : '#0',
                 ),
                 _ParamColumn(
                   label: 'SEQUENCE',
-                  value: id != null ? '' : '0',
+                  value: id != null ? id.sequence.toString() : '0',
                 ),
                 _ParamColumn(
                   label: 'STRATEGY',

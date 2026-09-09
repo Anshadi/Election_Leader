@@ -38,14 +38,14 @@ class ClusterNodesView extends StatelessWidget {
                 Expanded(flex: 3, child: _ColHeader('INSTANCE')),
                 Expanded(flex: 3, child: _ColHeader('ROLE')),
                 Expanded(flex: 4, child: _ColHeader('CONSENSUS STATE')),
-                Expanded(flex: 3, child: _ColHeader('HEALTH')),
+                Expanded(flex: 2, child: _ColHeader('HEALTH')),
               ],
             ),
           ),
 
           // Node Rows
           _NodeTableRow(
-            instance: 'node- (Current)',
+            instance: 'node-' + nodeId.toString() + ' (Current)',
             role: isLeader ? 'LEADER (PRIMARY)' : 'WORKER (STANDBY)',
             consensusState: isLeader ? 'Holding LeaderLatch' : 'Standby Candidate',
             isLeader: isLeader,
@@ -179,7 +179,7 @@ class _NodeTableRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -245,7 +245,7 @@ class _DepPill extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            ' ',
+            label + ' ' + port,
             style: GoogleFonts.jetBrainsMono(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
