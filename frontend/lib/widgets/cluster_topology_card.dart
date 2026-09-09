@@ -63,7 +63,7 @@ class ClusterTopologyCard extends StatelessWidget {
                   isPrimary: true,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
 
               // Standby Node 2
               Expanded(
@@ -75,7 +75,7 @@ class ClusterTopologyCard extends StatelessWidget {
                   isPrimary: false,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
 
               // Standby Node 3
               Expanded(
@@ -93,27 +93,29 @@ class ClusterTopologyCard extends StatelessWidget {
 
           // Infrastructure Dependencies Health
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.4),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.borderSubtle),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 _DependencyItem(
                   name: 'ZooKeeper Coordinator',
                   port: ':2181',
                   isHealthy: zkConnected,
                 ),
-                Container(width: 1, height: 24, color: AppColors.borderSubtle),
                 _DependencyItem(
                   name: 'Redis Reactive Store',
                   port: ':6379',
                   isHealthy: redisConnected,
                 ),
-                Container(width: 1, height: 24, color: AppColors.borderSubtle),
                 const _DependencyItem(
                   name: 'Actuator Prometheus',
                   port: ':8001/actuator',
@@ -153,7 +155,7 @@ class _NodeBox extends StatelessWidget {
         : (isPrimary ? AppColors.violet.withOpacity(0.08) : Colors.black.withOpacity(0.3));
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(10),
@@ -165,32 +167,37 @@ class _NodeBox extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                nodeName,
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: isLeader ? AppColors.amber : AppColors.textPrimary,
+              Flexible(
+                child: Text(
+                  nodeName,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isLeader ? AppColors.amber : AppColors.textPrimary,
+                  ),
                 ),
               ),
               if (isLeader)
-                const Text('⭐', style: TextStyle(fontSize: 12)),
+                const Text('⭐', style: TextStyle(fontSize: 11)),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             role,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: FontWeight.w600,
               color: isLeader ? AppColors.amber : AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             status,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
+              fontSize: 9.5,
               color: AppColors.textMuted,
             ),
           ),
@@ -217,27 +224,27 @@ class _DependencyItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(
             color: isHealthy ? AppColors.emerald : AppColors.amber,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
                 color: (isHealthy ? AppColors.emerald : AppColors.amber).withOpacity(0.5),
-                blurRadius: 8,
+                blurRadius: 6,
               )
             ],
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               name,
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
@@ -245,7 +252,7 @@ class _DependencyItem extends StatelessWidget {
             Text(
               isHealthy ? 'Connected ($port)' : 'Standalone Fallback',
               style: GoogleFonts.jetBrainsMono(
-                fontSize: 9.5,
+                fontSize: 9,
                 color: AppColors.textMuted,
               ),
             ),
