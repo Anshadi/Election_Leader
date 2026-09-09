@@ -152,7 +152,7 @@ class ClusterNodesView extends StatelessWidget {
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: item != null ? AppColors.accent.withValues(alpha: 0.4) : AppColors.border,
+                              color: item != null ? AppColors.accent.withOpacity( 0.4) : AppColors.border,
                             ),
                           ),
                           child: item != null
@@ -297,10 +297,10 @@ class _NodeInstanceCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isLeader ? AppColors.accent.withValues(alpha: 0.15) : AppColors.surfaceElevated,
+                  color: isLeader ? AppColors.accent.withOpacity( 0.15) : AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                    color: isLeader ? AppColors.accent.withValues(alpha: 0.5) : AppColors.border,
+                    color: isLeader ? AppColors.accent.withOpacity( 0.5) : AppColors.border,
                   ),
                 ),
                 child: Text(
