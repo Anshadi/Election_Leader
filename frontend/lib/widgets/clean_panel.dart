@@ -15,7 +15,7 @@ class CleanPanel extends StatelessWidget {
     this.badge,
     required this.child,
     this.trailing,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(16),
   });
 
   @override
@@ -32,23 +32,28 @@ class CleanPanel extends StatelessWidget {
         children: [
           if (title != null) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
                 children: [
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       Text(
                         title!,
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.2,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 8),
+                      if (badge != null)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -59,12 +64,11 @@ class CleanPanel extends StatelessWidget {
                           child: Text(
                             badge!,
                             style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10,
+                              fontSize: 9.5,
                               color: AppColors.textSecondary,
                             ),
                           ),
                         ),
-                      ],
                     ],
                   ),
                   if (trailing != null) trailing!,

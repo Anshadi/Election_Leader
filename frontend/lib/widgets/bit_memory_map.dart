@@ -13,8 +13,8 @@ class BitMemoryMap extends StatefulWidget {
 }
 
 class _BitMemoryMapState extends State<BitMemoryMap> {
+  int selectedSegment = 1; // 0=Sign, 1=Timestamp, 2=Node, 3=Sequence
   final TextEditingController _decodeController = TextEditingController();
-  int selectedSegment = 1; // 0: Sign, 1: Timestamp, 2: Node, 3: Sequence
 
   @override
   void dispose() {
@@ -26,27 +26,20 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>();
     final parsed = state.parsedId;
+
     final deltaMs = parsed?.timestampDelta ?? 0;
-    final timeStr = parsed?.dateTime ?? '--';
     final nodeId = parsed?.nodeId ?? 0;
     final seq = parsed?.sequence ?? 0;
+    final timeStr = parsed?.dateTime ?? '2026-09-09T00:00:00.000Z';
     final binary = parsed?.binaryRepresentation ?? '0 00000000000000000000000000000000000 000000000000 0000000000000000';
 
     return CleanPanel(
-      title: 'MEMORY BIT FIELD MAP',
-      badge: '64-BIT STRUCT',
-      trailing: Text(
-        'TOTAL: 63 SIGNED BITS',
-        style: GoogleFonts.jetBrainsMono(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textMuted,
-        ),
-      ),
+      title: '64-BIT MEMORY ALLOCATION MAP',
+      badge: 'BIT-PACKED ARITHMETIC',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Decoder Input Field
+          // Decode Custom ID Search Bar
           Row(
             children: [
               Expanded(
@@ -57,24 +50,21 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: AppColors.border),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Center(
-                    child: TextField(
-                      controller: _decodeController,
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12.5,
-                        color: AppColors.textPrimary,
+                  child: TextField(
+                    controller: _decodeController,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Paste any 64-bit ID to decode fields...',
+                      hintStyle: GoogleFonts.jetBrainsMono(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
                       ),
-                      decoration: InputDecoration(
-                        hintText: 'Inspect arbitrary 64-bit ID (e.g. ${parsed?.id ?? "2399340882693193728"})',
-                        hintStyle: GoogleFonts.jetBrainsMono(
-                          fontSize: 11.5,
-                          color: AppColors.textMuted,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                      onSubmitted: (val) => state.decodeCustomId(val),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: InputBorder.none,
+                      isDense: true,
                     ),
                   ),
                 ),
@@ -102,13 +92,13 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // 64-Bit Memory Allocation Ribbon
           Text(
-            'FIELD ALLOCATION MAP:',
+            'FIELD ALLOCATION MAP (CLICK SEGMENT TO INSPECT):',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 10.5,
+              fontSize: 9.5,
               fontWeight: FontWeight.w700,
               color: AppColors.textMuted,
             ),
@@ -125,8 +115,8 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
             child: Row(
               children: [
                 _FieldTile(
-                  label: 'SIGN [0]',
-                  bits: '63 (1b)',
+                  label: 'SIGN',
+                  bits: '63',
                   flex: 1,
                   color: AppColors.bitSign,
                   isSelected: selectedSegment == 0,
@@ -134,17 +124,17 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
                 ),
                 const SizedBox(width: 3),
                 _FieldTile(
-                  label: 'TIMESTAMP DELTA',
-                  bits: '62..28 (35b)',
-                  flex: 5,
+                  label: 'TIMESTAMP',
+                  bits: '35b',
+                  flex: 4,
                   color: AppColors.bitTimestamp,
                   isSelected: selectedSegment == 1,
                   onTap: () => setState(() => selectedSegment = 1),
                 ),
                 const SizedBox(width: 3),
                 _FieldTile(
-                  label: 'NODE ID',
-                  bits: '27..16 (12b)',
+                  label: 'NODE',
+                  bits: '12b',
                   flex: 2,
                   color: AppColors.bitNode,
                   isSelected: selectedSegment == 2,
@@ -152,8 +142,8 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
                 ),
                 const SizedBox(width: 3),
                 _FieldTile(
-                  label: 'SEQUENCE',
-                  bits: '15..0 (16b)',
+                  label: 'SEQ',
+                  bits: '16b',
                   flex: 3,
                   color: AppColors.bitSequence,
                   isSelected: selectedSegment == 3,
@@ -162,7 +152,7 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Detail Inspection Box
           _buildInspectionBox(selectedSegment, deltaMs, timeStr, nodeId, seq, binary),
@@ -181,37 +171,37 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
     switch (index) {
       case 0:
         fieldName = 'Sign Bit (Fixed 0)';
-        bitRange = 'Bit 63 • Mask: 0x8000000000000000';
+        bitRange = 'Bit 63 | Mask: 0x8000000000000000';
         decVal = '0 (Strictly Positive Signed Long)';
         formula = '(id >>> 63) & 1L == 0';
         accentColor = AppColors.bitSign;
         break;
       case 1:
-        fieldName = 'Epoch Timestamp Delta (Milliseconds)';
-        bitRange = 'Bits 62..28 (35 Bits) • Mask: 0x7FFFFFFFF0000000';
-        decVal = '$deltaMs ms elapsed (UTC: $timeStr)';
+        fieldName = 'Epoch Timestamp Delta (ms)';
+        bitRange = 'Bits 62..28 (35 Bits) | Mask: 0x7FFFFFFFF0000000';
+        decVal = '\ ms elapsed (UTC: \)';
         formula = '(id >>> 28) & 0x7FFFFFFFFL';
         accentColor = AppColors.bitTimestamp;
         break;
       case 2:
         fieldName = 'Cluster Node Identifier';
-        bitRange = 'Bits 27..16 (12 Bits) • Mask: 0x000000000FFF0000';
-        decVal = 'Node #$nodeId (Capacity: 0 to 4,095)';
+        bitRange = 'Bits 27..16 (12 Bits) | Mask: 0x000000000FFF0000';
+        decVal = 'Node #\ (0 to 4,095)';
         formula = '(id >>> 16) & 0x0FFFL';
         accentColor = AppColors.bitNode;
         break;
       case 3:
       default:
         fieldName = 'Millisecond Sequence Counter';
-        bitRange = 'Bits 15..0 (16 Bits) • Mask: 0x000000000000FFFF';
-        decVal = 'Seq #$seq (Capacity: 0 to 65,535)';
+        bitRange = 'Bits 15..0 (16 Bits) | Mask: 0x000000000000FFFF';
+        decVal = 'Seq #\ (0 to 65,535)';
         formula = 'id & 0xFFFFL';
         accentColor = AppColors.bitSequence;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(6),
@@ -220,13 +210,16 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Text(
                 fieldName,
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: accentColor,
                 ),
@@ -234,7 +227,7 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
               Text(
                 bitRange,
                 style: GoogleFonts.jetBrainsMono(
-                  fontSize: 10.5,
+                  fontSize: 10,
                   color: AppColors.textMuted,
                 ),
               ),
@@ -242,26 +235,26 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Decoded Value: $decVal',
+            'Decoded Value: ',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Shift/Mask Expression: $formula',
+            'Shift/Mask Expression: ',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 11,
+              fontSize: 10.5,
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           SelectableText(
-            'Binary Output: $binary',
+            'Binary: ',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 10.5,
+              fontSize: 9.5,
               color: AppColors.textMuted,
             ),
           ),
@@ -296,7 +289,7 @@ class _FieldTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(4),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           decoration: BoxDecoration(
             color: isSelected ? color.withOpacity(0.18) : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
@@ -306,21 +299,23 @@ class _FieldTile extends StatelessWidget {
             ),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 bits,
                 style: GoogleFonts.jetBrainsMono(
-                  fontSize: 9.5,
+                  fontSize: 9,
                   fontWeight: FontWeight.w700,
                   color: isSelected ? color : AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 label,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
-                  fontSize: 9.5,
+                  fontSize: 8.5,
                   fontWeight: FontWeight.w600,
                   color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
                 ),

@@ -16,6 +16,16 @@ class IdGeneratorView extends StatelessWidget {
     final idStr = id != null ? id.id.toString() : '---';
     final isStreaming = state.isStreaming;
 
+    String timeStr = '--:--:--';
+    if (id != null && id.dateTime.isNotEmpty) {
+      final parts = id.dateTime.split('T');
+      if (parts.length > 1) {
+        timeStr = parts[1].replaceAll('Z', '');
+      } else {
+        timeStr = id.dateTime;
+      }
+    }
+
     return CleanPanel(
       title: 'PRIMARY ID GENERATOR',
       badge: '64-BIT SORTABLE',
@@ -40,7 +50,7 @@ class IdGeneratorView extends StatelessWidget {
         children: [
           // Large ID Output Field
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(6),
@@ -56,7 +66,7 @@ class IdGeneratorView extends StatelessWidget {
                       Text(
                         'ALLOCATED SEQUENCE ID',
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.8,
                           color: AppColors.textMuted,
@@ -66,10 +76,10 @@ class IdGeneratorView extends StatelessWidget {
                       SelectableText(
                         idStr,
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 24,
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
-                          letterSpacing: 1.0,
+                          letterSpacing: 0.8,
                         ),
                       ),
                     ],
@@ -83,7 +93,7 @@ class IdGeneratorView extends StatelessWidget {
                     Clipboard.setData(ClipboardData(text: idStr));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('ID $idStr copied to clipboard', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
+                        content: Text('ID \ copied to clipboard', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                         duration: const Duration(seconds: 1),
                         behavior: SnackBarBehavior.floating,
                         backgroundColor: AppColors.surfaceElevated,
@@ -96,15 +106,15 @@ class IdGeneratorView extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // Action Controls Row (Tactile buttons, no glowing emojis)
+          // Action Controls Row
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               _ActionButton(
-                label: 'Generate Next',
+                label: state.isGenerating ? 'Generating...' : 'Generate Next',
                 isPrimary: true,
-                onTap: () => state.generateSingleId(),
+                onTap: state.isGenerating ? () {} : () => state.generateSingleId(),
               ),
               _ActionButton(
                 label: 'Batch 100',
@@ -121,36 +131,33 @@ class IdGeneratorView extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
-          // Technical Parameter Grid
+          // Technical Parameter Grid (Wrapped to avoid any flex overflow)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 _ParamColumn(
                   label: 'TIMESTAMP (UTC)',
-                  value: id != null && id.dateTime.isNotEmpty
-                      ? id.dateTime.split('T')[1].replaceAll('Z', '')
-                      : '--:--:--',
+                  value: timeStr,
                 ),
-                Container(width: 1, height: 26, color: AppColors.border),
                 _ParamColumn(
                   label: 'NODE ID',
-                  value: id != null ? '#${id.nodeId}' : '#0',
+                  value: id != null ? '#' : '#0',
                 ),
-                Container(width: 1, height: 26, color: AppColors.border),
                 _ParamColumn(
                   label: 'SEQUENCE',
-                  value: id != null ? '${id.sequence}' : '0',
+                  value: id != null ? '' : '0',
                 ),
-                Container(width: 1, height: 26, color: AppColors.border),
                 _ParamColumn(
                   label: 'STRATEGY',
                   value: id?.strategy ?? 'AUTO',
@@ -226,6 +233,7 @@ class _ParamColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
@@ -235,11 +243,11 @@ class _ParamColumn extends StatelessWidget {
             color: AppColors.textMuted,
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 2),
         Text(
           value,
           style: GoogleFonts.jetBrainsMono(
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
