@@ -143,7 +143,6 @@ async function generateDistributedId() {
 
 ## 🌟 Summary: What Makes This Project Stand Out
 
-When showcasing this project to interviewers, tech leads, or open-source contributors:
 1. **It solves a real distributed systems bottleneck:** Demonstrates understanding of why centralized databases fail at scale and how distributed coordinate consensus works.
 2. **It shows deep understanding of low-level and high-level engineering:** From **bit-level shifting and masking** to **ZooKeeper consensus quorums**, **double-buffered reactive caching**, and **reactive microservice design**.
 3. **It includes full-stack production polish:** Backed by **Spring Boot WebFlux**, **Prometheus/Micrometer metrics**, **Docker Compose orchestration**, and a **custom Flutter Mission Control UI**.
