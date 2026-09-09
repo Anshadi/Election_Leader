@@ -17,114 +17,84 @@ class HeaderBar extends StatelessWidget {
     final zkConnected = cluster?.zookeeperConnected ?? false;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 16,
-        runSpacing: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Brand info
+          // Left: Monospace System Identifier
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.violet, AppColors.cyan],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.violet.withOpacity(0.4),
-                      blurRadius: 18,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text('⚡', style: TextStyle(fontSize: 22)),
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: AppColors.accent,
+                  shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ElectionLeader Control Center',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: AppColors.textPrimary,
-                    ),
+              const SizedBox(width: 10),
+              Text(
+                'ELECTION_LEADER',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  'v1.0-RELEASE',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
                   ),
-                  Text(
-                    'Distributed ID Generator • ZooKeeper Leader Latch • Redis Segment Prefetch',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
 
-          // Status Badges
+          // Right: Telemetry & Cluster State Pills (No emojis, crisp technical layout)
           Wrap(
-            spacing: 10,
-            runSpacing: 8,
+            spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // QPS Counter
-              _StatusBadge(
-                label: '${state.currentQps} QPS',
-                icon: Icons.speed,
-                color: AppColors.cyanLight,
-                bgColor: AppColors.cyan.withOpacity(0.15),
-                borderColor: AppColors.cyan.withOpacity(0.4),
+              _StatusPill(
+                label: 'QPS',
+                value: '${state.currentQps}',
+                activeColor: AppColors.accent,
               ),
-
-              // Leader Badge
-              _StatusBadge(
-                label: isLeader ? '👑 CLUSTER LEADER' : '🛡️ STANDBY NODE',
-                icon: isLeader ? Icons.star : Icons.shield_outlined,
-                color: isLeader ? AppColors.amber : AppColors.textSecondary,
-                bgColor: isLeader ? AppColors.amber.withOpacity(0.15) : Colors.white.withOpacity(0.04),
-                borderColor: isLeader ? AppColors.amber.withOpacity(0.4) : AppColors.borderSubtle,
-                pulse: isLeader,
+              _StatusPill(
+                label: 'NODE',
+                value: '#$nodeId',
+                activeColor: AppColors.blue,
               ),
-
-              // Node Badge
-              _StatusBadge(
-                label: 'Node #$nodeId',
-                icon: Icons.developer_board,
-                color: AppColors.violet,
-                bgColor: AppColors.violet.withOpacity(0.15),
-                borderColor: AppColors.violet.withOpacity(0.4),
+              _StatusPill(
+                label: 'ROLE',
+                value: isLeader ? 'LEADER' : 'STANDBY',
+                activeColor: isLeader ? AppColors.green : AppColors.textSecondary,
               ),
-
-              // Strategy Badge
-              _StatusBadge(
-                label: strategy,
-                icon: Icons.auto_awesome,
-                color: AppColors.emeraldLight,
-                bgColor: AppColors.emerald.withOpacity(0.15),
-                borderColor: AppColors.emerald.withOpacity(0.4),
+              _StatusPill(
+                label: 'STRATEGY',
+                value: strategy,
+                activeColor: AppColors.textPrimary,
               ),
-
-              // ZK Badge
-              _StatusBadge(
-                label: zkConnected ? 'ZK: Connected' : 'ZK: Standalone',
-                icon: Icons.hub,
-                color: zkConnected ? AppColors.emeraldLight : AppColors.textMuted,
-                bgColor: zkConnected ? AppColors.emerald.withOpacity(0.15) : Colors.white.withOpacity(0.03),
-                borderColor: zkConnected ? AppColors.emerald.withOpacity(0.4) : AppColors.borderSubtle,
+              _StatusPill(
+                label: 'ZK',
+                value: zkConnected ? 'ONLINE' : 'STANDALONE',
+                activeColor: zkConnected ? AppColors.green : AppColors.amber,
               ),
             ],
           ),
@@ -134,43 +104,43 @@ class HeaderBar extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
+class _StatusPill extends StatelessWidget {
   final String label;
-  final IconData icon;
-  final Color color;
-  final Color bgColor;
-  final Color borderColor;
-  final bool pulse;
+  final String value;
+  final Color activeColor;
 
-  const _StatusBadge({
+  const _StatusPill({
     required this.label,
-    required this.icon,
-    required this.color,
-    required this.bgColor,
-    required this.borderColor,
-    this.pulse = false,
+    required this.value,
+    required this.activeColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
           Text(
-            label,
+            '$label: ',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted,
+            ),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: activeColor,
             ),
           ),
         ],

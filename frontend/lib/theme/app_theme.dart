@@ -2,50 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const Color bgBase = Color(0xFF07090E);
-  static const Color cardBg = Color(0xFF0E131F);
-  static const Color cardSurface = Color(0xFF141B2D);
-  static const Color borderSubtle = Color(0x1FFFFFFF);
-  static const Color borderGlow = Color(0x667C3AED);
-
-  // Accents
-  static const Color violet = Color(0xFF8B5CF6);
-  static const Color violetDeep = Color(0xFF6D28D9);
-  static const Color cyan = Color(0xFF06B6D4);
-  static const Color cyanLight = Color(0xFF38BDF8);
-  static const Color emerald = Color(0xFF10B981);
-  static const Color emeraldLight = Color(0xFF34D399);
-  static const Color amber = Color(0xFFF59E0B);
-  static const Color red = Color(0xFFEF4444);
+  // Deep Minimalist Matte Slate Palette
+  static const Color background = Color(0xFF090A0D);
+  static const Color surface = Color(0xFF111318);
+  static const Color surfaceElevated = Color(0xFF181B22);
+  static const Color border = Color(0xFF222631);
+  static const Color borderHover = Color(0xFF323846);
 
   // Text
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF64748B);
+  static const Color textPrimary = Color(0xFFEDEDED);
+  static const Color textSecondary = Color(0xFF8B949E);
+  static const Color textMuted = Color(0xFF4B5363);
 
-  // Bit Range Colors
-  static const Color bitSign = Color(0xFF64748B);
-  static const Color bitTimestamp = Color(0xFF06B6D4);
-  static const Color bitNode = Color(0xFFA855F7);
-  static const Color bitSequence = Color(0xFF10B981);
+  // Precision Accents (Single surgical accent, zero neon overload)
+  static const Color accent = Color(0xFFFF5500); // International Safety Orange
+  static const Color accentSubtle = Color(0x1FFF5500);
+  static const Color blue = Color(0xFF388BFD);
+  static const Color green = Color(0xFF2EA043);
+  static const Color amber = Color(0xFFD29922);
+  static const Color red = Color(0xFFF85149);
+
+  // Bit Field Structural Colors (Muted architectural tones)
+  static const Color bitSign = Color(0xFF4B5363);
+  static const Color bitTimestamp = Color(0xFF388BFD);
+  static const Color bitNode = Color(0xFFA371F7);
+  static const Color bitSequence = Color(0xFF2EA043);
 }
 
 class AppTheme {
-  static ThemeData get darkTheme {
+  static ThemeData get theme {
     return ThemeData(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: AppColors.bgBase,
-      primaryColor: AppColors.violet,
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(
+      scaffoldBackgroundColor: AppColors.background,
+      primaryColor: AppColors.accent,
+      dividerColor: AppColors.border,
+      textTheme: GoogleFonts.interTextTheme(
         ThemeData.dark().textTheme,
       ).apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
       ),
       colorScheme: const ColorScheme.dark(
-        primary: AppColors.violet,
-        secondary: AppColors.cyan,
-        surface: AppColors.cardBg,
+        primary: AppColors.accent,
+        surface: AppColors.surface,
       ),
     );
   }
