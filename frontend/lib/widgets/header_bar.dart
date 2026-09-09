@@ -73,55 +73,13 @@ class HeaderBar extends StatelessWidget {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceElevated,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.accent.withOpacity(0.5)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'TARGET: ',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: state.selectedNodeIndex,
-                        dropdownColor: AppColors.surfaceElevated,
-                        isDense: true,
-                        icon: const Icon(Icons.arrow_drop_down, size: 16, color: AppColors.accent),
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.accent,
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 0, child: Text('Node 1 (:8001)')),
-                          DropdownMenuItem(value: 1, child: Text('Node 2 (:8002)')),
-                          DropdownMenuItem(value: 2, child: Text('Node 3 (:8003)')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) state.selectNode(val);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               _StatusPill(
                 label: 'QPS',
                 value: state.currentQps.toString(),
                 activeColor: AppColors.accent,
               ),
               _StatusPill(
-                label: 'NODE_ID',
+                label: 'NODE',
                 value: '#' + nodeId.toString(),
                 activeColor: AppColors.blue,
               ),
@@ -136,7 +94,7 @@ class HeaderBar extends StatelessWidget {
                 activeColor: AppColors.textPrimary,
               ),
               _StatusPill(
-                label: 'ZK',
+                label: 'ZK QUORUM',
                 value: zkConnected ? 'ONLINE' : 'STANDALONE',
                 activeColor: zkConnected ? AppColors.green : AppColors.amber,
               ),
@@ -174,7 +132,7 @@ class _StatusPill extends StatelessWidget {
           Text(
             label + ': ',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: FontWeight.w500,
               color: AppColors.textMuted,
             ),

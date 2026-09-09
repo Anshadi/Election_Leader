@@ -11,205 +11,73 @@ class ClusterNodesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>();
-    final nodes = state.clusterNodes;
-    final simultaneous = state.simultaneousResults;
-    final zkConnected = state.clusterStatus?.zookeeperConnected ?? false;
-    final redisConnected = state.clusterStatus?.redisConnected ?? false;
+    final cluster = state.clusterStatus;
+    final isLeader = cluster?.isLeader ?? true;
+    final nodeId = cluster?.nodeId ?? 0;
+    final zkConnected = cluster?.zookeeperConnected ?? false;
+    final redisConnected = cluster?.redisConnected ?? false;
 
     return CleanPanel(
-      title: 'MULTI-NODE CLUSTER CONTROLLER',
-      badge: 'ZOOKEEPER & REDIS',
+      title: 'CLUSTER TOPOLOGY & CONSENSUS',
+      badge: 'ZOOKEEPER LEADER LATCH',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Live Cluster Node Grid (Wrap or Row)
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmall = constraints.maxWidth < 360;
-              if (isSmall) {
-                return Column(
-                  children: List.generate(3, (index) {
-                    final node = index < nodes.length ? nodes[index] : null;
-                    final isSelected = state.selectedNodeIndex == index;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: _NodeInstanceCard(
-                        index: index,
-                        port: 8001 + index,
-                        node: node,
-                        isSelected: isSelected,
-                        onSelect: () => state.selectNode(index),
-                        onGenerate: () => state.generateSingleId(fromNodeIndex: index),
-                      ),
-                    );
-                  }),
-                );
-              }
-              return Row(
-                children: List.generate(3, (index) {
-                  final node = index < nodes.length ? nodes[index] : null;
-                  final isSelected = state.selectedNodeIndex == index;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: index == 0 ? 0 : 3,
-                        right: index == 2 ? 0 : 3,
-                      ),
-                      child: _NodeInstanceCard(
-                        index: index,
-                        port: 8001 + index,
-                        node: node,
-                        isSelected: isSelected,
-                        onSelect: () => state.selectNode(index),
-                        onGenerate: () => state.generateSingleId(fromNodeIndex: index),
-                      ),
-                    ),
-                  );
-                }),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-
-          // Simultaneous Cluster Generation Action
+          // Nodes Table Header
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: const BoxDecoration(
               color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: const Row(
               children: [
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 10,
-                  runSpacing: 8,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'CONCURRENT MULTI-NODE GENERATION',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Dispatches parallel requests to Node 1, 2, and 3 at the same ms.',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                    InkWell(
-                      onTap: state.isMultiGenerating
-                          ? null
-                          : () => state.generateSimultaneousAcrossCluster(),
-                      borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: state.isMultiGenerating
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.flash_on, size: 13, color: Colors.white),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'FIRE ALL 3 NODES',
-                                    style: GoogleFonts.jetBrainsMono(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Multi-node comparison output
-                if (simultaneous.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  const Divider(height: 1, thickness: 1, color: AppColors.border),
-                  const SizedBox(height: 8),
-                  Text(
-                    'MULTI-NODE OUTPUT COMPARISON (VERIFIED 0 COLLISIONS):',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isNarrow = constraints.maxWidth < 380;
-                      if (isNarrow) {
-                        return Column(
-                          children: List.generate(3, (idx) {
-                            final item = simultaneous[idx];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: _ComparisonTile(idx: idx, item: item),
-                            );
-                          }),
-                        );
-                      }
-                      return Row(
-                        children: List.generate(3, (idx) {
-                          final item = simultaneous[idx];
-                          return Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                left: idx == 0 ? 0 : 2,
-                                right: idx == 2 ? 0 : 2,
-                              ),
-                              child: _ComparisonTile(idx: idx, item: item),
-                            ),
-                          );
-                        }),
-                      );
-                    },
-                  ),
-                ],
+                Expanded(flex: 3, child: _ColHeader('INSTANCE')),
+                Expanded(flex: 3, child: _ColHeader('ROLE')),
+                Expanded(flex: 4, child: _ColHeader('CONSENSUS STATE')),
+                Expanded(flex: 3, child: _ColHeader('HEALTH')),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+
+          // Node Rows
+          _NodeTableRow(
+            instance: 'node- (Current)',
+            role: isLeader ? 'LEADER (PRIMARY)' : 'WORKER (STANDBY)',
+            consensusState: isLeader ? 'Holding LeaderLatch' : 'Standby Candidate',
+            isLeader: isLeader,
+            isHealthy: true,
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          _NodeTableRow(
+            instance: 'node-1',
+            role: !isLeader ? 'LEADER (PRIMARY)' : 'WORKER (STANDBY)',
+            consensusState: zkConnected ? 'Standby Candidate' : 'Local Standalone',
+            isLeader: !isLeader,
+            isHealthy: zkConnected,
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          _NodeTableRow(
+            instance: 'node-2',
+            role: 'WORKER (STANDBY)',
+            consensusState: zkConnected ? 'Standby Candidate' : 'Local Standalone',
+            isLeader: false,
+            isHealthy: zkConnected,
+          ),
+          const SizedBox(height: 14),
 
           // Infrastructure Dependencies Health
           Wrap(
-            spacing: 6,
+            spacing: 8,
             runSpacing: 6,
             children: [
-              _DepPill(label: 'ZooKeeper', port: ':2181', isConnected: zkConnected),
-              _DepPill(label: 'Redis', port: ':6379', isConnected: redisConnected),
-              const _DepPill(label: 'Prometheus', port: ':9090', isConnected: true),
-              const _DepPill(label: 'Grafana', port: ':3000', isConnected: true),
+              _DepPill(label: 'ZooKeeper Quorum', port: ':2181', isConnected: zkConnected),
+              _DepPill(label: 'Redis Lettuce Cache', port: ':6379', isConnected: redisConnected),
+              const _DepPill(label: 'Prometheus Metrics', port: ':9090', isConnected: true),
+              const _DepPill(label: 'Grafana Telemetry', port: ':3000', isConnected: true),
             ],
           ),
         ],
@@ -218,236 +86,125 @@ class ClusterNodesView extends StatelessWidget {
   }
 }
 
-class _ComparisonTile extends StatelessWidget {
-  final int idx;
-  final dynamic item;
-
-  const _ComparisonTile({required this.idx, required this.item});
+class _ColHeader extends StatelessWidget {
+  final String text;
+  const _ColHeader(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: item != null ? AppColors.accent.withOpacity(0.4) : AppColors.border,
-        ),
+    return Text(
+      text,
+      style: GoogleFonts.jetBrainsMono(
+        fontSize: 9.5,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textMuted,
+        letterSpacing: 0.5,
       ),
-      child: item != null
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'NODE ',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    Text(
-                      'ID: ',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 8.5,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                SelectableText(
-                  item.id.toString(),
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  'Seq: ',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 8,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            )
-          : Center(
-              child: Text(
-                'Node \ Offline',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 8.5,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
     );
   }
 }
 
-class _NodeInstanceCard extends StatelessWidget {
-  final int index;
-  final int port;
-  final dynamic node;
-  final bool isSelected;
-  final VoidCallback onSelect;
-  final VoidCallback onGenerate;
+class _NodeTableRow extends StatelessWidget {
+  final String instance;
+  final String role;
+  final String consensusState;
+  final bool isLeader;
+  final bool isHealthy;
 
-  const _NodeInstanceCard({
-    required this.index,
-    required this.port,
-    required this.node,
-    required this.isSelected,
-    required this.onSelect,
-    required this.onGenerate,
+  const _NodeTableRow({
+    required this.instance,
+    required this.role,
+    required this.consensusState,
+    required this.isLeader,
+    required this.isHealthy,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = node?.isOnline == true;
-    final isLeader = node?.isLeader == true;
-    final nodeId = node?.nodeId ?? index;
-
     return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.surfaceElevated : AppColors.surface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isSelected ? AppColors.accent : AppColors.border,
-          width: isSelected ? 1.5 : 1.0,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      color: Colors.transparent,
+      child: Row(
         children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              instance,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isLeader ? AppColors.accent : AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isLeader) ...[
                   Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: isOnline ? AppColors.green : AppColors.textMuted,
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'NODE ',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: isSelected ? AppColors.accent : AppColors.textPrimary,
-                    ),
-                  ),
+                  const SizedBox(width: 5),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: isLeader ? AppColors.accent.withOpacity(0.15) : AppColors.surfaceElevated,
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(
-                    color: isLeader ? AppColors.accent.withOpacity(0.5) : AppColors.border,
-                  ),
-                ),
-                child: Text(
-                  isLeader ? 'LEADER' : 'STANDBY',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w700,
-                    color: isLeader ? AppColors.accent : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-
-          // Port & Node ID info
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                ':',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 9,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              Text(
-                'ID: ',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 9,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: onSelect,
-                  borderRadius: BorderRadius.circular(3),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.accent : AppColors.surfaceElevated,
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(
-                        color: isSelected ? AppColors.accent : AppColors.border,
-                      ),
-                    ),
-                    child: Text(
-                      isSelected ? 'ACTIVE' : 'SELECT',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 3),
-              InkWell(
-                onTap: isOnline ? onGenerate : null,
-                borderRadius: BorderRadius.circular(3),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(3),
-                    border: Border.all(color: AppColors.border),
-                  ),
+                Flexible(
                   child: Text(
-                    'PULL',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      color: isOnline ? AppColors.textPrimary : AppColors.textMuted,
+                    role,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: isLeader ? FontWeight.w700 : FontWeight.w500,
+                      color: isLeader ? AppColors.accent : AppColors.textSecondary,
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(
+              consensusState,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 10.5,
+                color: AppColors.textMuted,
               ),
-            ],
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isHealthy ? AppColors.green : AppColors.amber,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    isHealthy ? 'ACTIVE' : 'OFFLINE',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: isHealthy ? AppColors.green : AppColors.amber,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -469,7 +226,7 @@ class _DepPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(4),
@@ -486,11 +243,11 @@ class _DepPill extends StatelessWidget {
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 6),
           Text(
-            '\ ',
+            ' ',
             style: GoogleFonts.jetBrainsMono(
-              fontSize: 9,
+              fontSize: 9.5,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
