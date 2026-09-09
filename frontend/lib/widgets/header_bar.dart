@@ -17,16 +17,20 @@ class HeaderBar extends StatelessWidget {
     final zkConnected = cluster?.zookeeperConnected ?? false;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 10,
+        spacing: 12,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 8,
@@ -66,6 +70,7 @@ class HeaderBar extends StatelessWidget {
           ),
           Wrap(
             spacing: 8,
+            runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
@@ -73,7 +78,7 @@ class HeaderBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.accent.withOpacity( 0.5)),
+                  border: Border.all(color: AppColors.accent.withOpacity(0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
