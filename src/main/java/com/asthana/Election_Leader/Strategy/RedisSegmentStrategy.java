@@ -2,11 +2,11 @@ package com.asthana.Election_Leader.Strategy;
 
 import com.asthana.Election_Leader.Configs.AppProperties;
 import com.asthana.Election_Leader.Exceptions.SegmentExhaustedException;
+import com.asthana.Election_Leader.Repository.RedisSegmentRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -26,24 +26,22 @@ public class RedisSegmentStrategy implements IdGeneratorStrategy {
     private static final Logger log = LoggerFactory.getLogger(RedisSegmentStrategy.class);
 
     private final AppProperties appProperties;
-    private final ReactiveStringRedisTemplate redisTemplate;
+    private final RedisSegmentRepository segmentRepository;
 
     private final SegmentBuffer segmentBuffer = new SegmentBuffer();
     private final AtomicBoolean isInitialized = new AtomicBoolean(false);
     private volatile boolean isRedisHealthy = false;
 
     @Autowired
-    public RedisSegmentStrategy(AppProperties appProperties, ReactiveStringRedisTemplate redisTemplate) {
+    public RedisSegmentStrategy(AppProperties appProperties, RedisSegmentRepository segmentRepository) {
         this.appProperties = appProperties;
-        this.redisTemplate = redisTemplate;
+        this.segmentRepository = segmentRepository;
     }
 
     @PostConstruct
     public void init() {
         try {
-            // Attempt initial segment allocation
-            Long newMax = redisTemplate.opsForValue()
-                    .increment(appProperties.getRedis().getKey(), appProperties.getRedis().getBaseBlockSize())
+            Long newMax = segmentRepository.allocateSegment(appProperties.getRedis().getBaseBlockSize())
                     .block(Duration.ofSeconds(2));
 
             if (newMax != null) {
@@ -129,8 +127,7 @@ public class RedisSegmentStrategy implements IdGeneratorStrategy {
             Segment next = segmentBuffer.getNextSegment();
             int nextStep = calculateNextStep(segmentBuffer.getCurrentSegment());
 
-            Long newMax = redisTemplate.opsForValue()
-                    .increment(appProperties.getRedis().getKey(), nextStep)
+            Long newMax = segmentRepository.allocateSegment(nextStep)
                     .block(Duration.ofSeconds(3));
 
             if (newMax != null) {
@@ -151,8 +148,7 @@ public class RedisSegmentStrategy implements IdGeneratorStrategy {
     private void syncFetchSegment(Segment current) {
         int nextStep = calculateNextStep(current);
         try {
-            Long newMax = redisTemplate.opsForValue()
-                    .increment(appProperties.getRedis().getKey(), nextStep)
+            Long newMax = segmentRepository.allocateSegment(nextStep)
                     .block(Duration.ofSeconds(3));
 
             if (newMax != null) {
@@ -176,7 +172,6 @@ public class RedisSegmentStrategy implements IdGeneratorStrategy {
             step = appProperties.getRedis().getBaseBlockSize();
         }
         long duration = System.currentTimeMillis() - current.getCreateTime();
-        // If exhausted faster than 15 minutes, double the step
         if (duration < 15 * 60 * 1000 && step * 2 <= appProperties.getRedis().getMaxBlockSize()) {
             step = step * 2;
         } else if (duration > 30 * 60 * 1000 && step / 2 >= appProperties.getRedis().getMinBlockSize()) {
@@ -195,7 +190,6 @@ public class RedisSegmentStrategy implements IdGeneratorStrategy {
         return isRedisHealthy && isInitialized.get();
     }
 
-    // --- Inner Helper Buffer Classes ---
     private static class Segment {
         private final AtomicLong value = new AtomicLong(0);
         private volatile long min;

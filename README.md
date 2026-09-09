@@ -4,7 +4,8 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://www.oracle.com/java/)
 [![Apache Curator](https://img.shields.io/badge/Apache%20Curator-5.5.0-blue.svg)](https://curator.apache.org/)
 [![Reactive Redis](https://img.shields.io/badge/Redis-Reactive%20Lettuce-red.svg)](https://lettuce.io/)
-[![HdrHistogram](https://img.shields.io/badge/HdrHistogram-P99%20Latency-purple.svg)](https://hdrhistogram.github.io/HdrHistogram/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-Micrometer%20Metrics-purple.svg)](https://prometheus.io/)
+[![Grafana](https://img.shields.io/badge/Grafana-Live%20Dashboards-orange.svg)](https://grafana.com/)
 
 **ElectionLeader** is an ultra-high-throughput, self-adaptive, distributed 64-bit unique ID generation system inspired by **Twitter Snowflake**, **Meituan Leaf**, and **Baidu UidGenerator**. It features autonomous **ZooKeeper node coordination & leader election**, **double-buffered asynchronous Redis segment leasing**, **NTP clock drift protection**, and **Spring WebFlux non-blocking reactive APIs**.
 
@@ -18,7 +19,7 @@ flowchart TD
     
     subgraph Manager ["Adaptive ID Manager & Observability"]
         Router["Dynamic Strategy Router<br/>(AUTO / IN_MEMORY / REDIS)"]
-        Hdr["HdrHistogram<br/>(P50, P90, P99, P99.9 Latency SLA Tracker)"]
+        Hdr["HdrHistogram & Micrometer<br/>(P50, P90, P99, P99.9 Latency SLA Tracker)"]
     end
     
     subgraph Strategies ["ID Generation Strategies"]
@@ -32,8 +33,9 @@ flowchart TD
         NodeRegistry["Dynamic Node Registry<br/>(Allocates NodeId 0-4095)"]
     end
 
-    subgraph RedisStore ["Distributed Cache"]
-        Redis["Reactive Redis (Lettuce)<br/>Atomic INCRBY Segment Allocation"]
+    subgraph RedisStore ["Distributed Cache & Storage"]
+        RedisRepo["RedisSegmentRepository<br/>(Atomic Range Leasing)"]
+        Redis["Reactive Redis (Lettuce)"]
     end
 
     Client --> Router
@@ -42,7 +44,8 @@ flowchart TD
     Router --> RedisSegment
     
     Snowflake -.-> NodeRegistry
-    RedisSegment --> Redis
+    RedisSegment --> RedisRepo
+    RedisRepo --> Redis
     Router -.-> LeaderElection
     LeaderElection --> ZK
     NodeRegistry --> ZK
@@ -76,7 +79,7 @@ $$\begin{array}{|c|c|c|c|}
    - Graceful fallback to static node ID if ZooKeeper is offline.
 
 2. **Double-Buffered Asynchronous Segment Allocator (Leaf Hybrid):**
-   - Allocates ID blocks from Redis atomically (`INCRBY`).
+   - Allocates ID blocks from Redis atomically via `RedisSegmentRepository`.
    - When remaining capacity in the active buffer drops below 20% (`refillThresholdRatio = 0.2`), a background thread asynchronously prefetches the next block.
    - Buffer switching occurs in $O(1)$ memory pointer swaps without blocking incoming HTTP request threads.
 
@@ -84,27 +87,49 @@ $$\begin{array}{|c|c|c|c|}
    - Detects backward system clock adjustments.
    - Minor drift ($\le 5\text{ ms}$) triggers a precision spin-wait until the clock catches up; major drift triggers automatic strategy failover.
 
-4. **Microsecond Latency SLA Tracking (`HdrHistogram`):**
-   - High-dynamic-range latency recorder calculates exact percentiles (**P50, P90, P99, P99.9**) without performance degradation.
+4. **Production Observability & SLA Monitoring:**
+   - `HdrHistogram` latency SLA tracking (**P50, P90, P99, P99.9**).
+   - Micrometer integration exporting Prometheus metrics to `/actuator/prometheus`.
+   - Pre-configured Grafana dashboard.
 
 5. **Modern Real-Time Glassmorphic Dashboard:**
    - Interactive web console (`/index.html`) with live QPS meter, 64-bit ID decoder, and latency charts.
 
 ---
 
-## 🚀 Quick Start
+## 🐳 Multi-Node Cluster with Docker Compose
+
+Spin up a full 3-node distributed cluster with ZooKeeper, Redis, Prometheus, and Grafana in a single command:
+
+```bash
+docker compose up -d --build
+```
+
+### Cluster Services
+| Service | URL / Port | Description |
+| :--- | :--- | :--- |
+| **Node 1 (Primary)** | `http://localhost:8001` | Cluster Candidate / Leader |
+| **Node 2 (Worker)** | `http://localhost:8002` | Standby Worker |
+| **Node 3 (Worker)** | `http://localhost:8003` | Standby Worker |
+| **Grafana UI** | `http://localhost:3000` | Login: `admin` / `admin` |
+| **Prometheus** | `http://localhost:9090` | Metrics Scraper |
+| **ZooKeeper** | `localhost:2181` | Curator Cluster Coordinator |
+| **Redis** | `localhost:6379` | Segment Range Leaser |
+
+---
+
+## 🚀 Standalone Local Execution
 
 ### 1. Build and Test
 ```powershell
 .\mvnw.cmd clean test
 ```
 
-### 2. Run the Application
+### 2. Run Locally
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
-
-The application will start on **`http://localhost:8001`**.
+Access the interactive dashboard at **`http://localhost:8001`**.
 
 ---
 
@@ -140,19 +165,6 @@ Accept: text/event-stream
 ### Decode 64-Bit ID
 ```http
 GET /api/v1/id/decode/2399077542142148608
-```
-**Response:**
-```json
-{
-  "id": 2399077542142148608,
-  "epochMillis": 1780000000000,
-  "timestampDelta": 8937260293,
-  "absoluteTimestamp": 1788937260293,
-  "dateTime": "2026-09-09T07:01:00.293Z",
-  "nodeId": 0,
-  "sequence": 0,
-  "binaryRepresentation": "0 01000010100101100111100010100000101 000000000000 0000000000000000"
-}
 ```
 
 ### Cluster & Leader Status

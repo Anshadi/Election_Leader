@@ -8,6 +8,10 @@ import com.asthana.Election_Leader.Strategy.IdGeneratorStrategy;
 import com.asthana.Election_Leader.Strategy.RedisSegmentStrategy;
 import com.asthana.Election_Leader.Strategy.SnowflakeStrategy;
 import com.asthana.Election_Leader.Utils.IdPacker;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import jakarta.annotation.PostConstruct;
 import org.HdrHistogram.Histogram;
 import org.HdrHistogram.SingleWriterRecorder;
 import org.slf4j.Logger;
@@ -18,6 +22,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
@@ -31,6 +36,12 @@ public class AdaptiveIdManager {
     private final ZookeeperLeaderElection leaderElection;
     private final ZookeeperNodeRegistry nodeRegistry;
 
+    // Micrometer Observability Meters
+    private final Counter idSuccessCounter;
+    private final Counter idFallbackCounter;
+    private final Timer idTimer;
+    private final MeterRegistry meterRegistry;
+
     // HdrHistogram for measuring latency in microseconds up to 100,000,000 (100 seconds)
     private final SingleWriterRecorder latencyRecorder = new SingleWriterRecorder(1, 100_000_000L, 3);
     private final AtomicLong totalGeneratedCount = new AtomicLong(0);
@@ -41,12 +52,26 @@ public class AdaptiveIdManager {
             SnowflakeStrategy snowflakeStrategy,
             RedisSegmentStrategy redisSegmentStrategy,
             ZookeeperLeaderElection leaderElection,
-            ZookeeperNodeRegistry nodeRegistry) {
+            ZookeeperNodeRegistry nodeRegistry,
+            Counter idGenerationSuccessCounter,
+            Counter idGenerationFallbackCounter,
+            Timer idGenerationTimer,
+            MeterRegistry meterRegistry) {
         this.appProperties = appProperties;
         this.snowflakeStrategy = snowflakeStrategy;
         this.redisSegmentStrategy = redisSegmentStrategy;
         this.leaderElection = leaderElection;
         this.nodeRegistry = nodeRegistry;
+        this.idSuccessCounter = idGenerationSuccessCounter;
+        this.idFallbackCounter = idGenerationFallbackCounter;
+        this.idTimer = idGenerationTimer;
+        this.meterRegistry = meterRegistry;
+    }
+
+    @PostConstruct
+    public void registerGauges() {
+        meterRegistry.gauge("election_leader_active_node_id", nodeRegistry, ZookeeperNodeRegistry::getNodeId);
+        meterRegistry.gauge("election_leader_is_cluster_leader", leaderElection, le -> le.isLeader() ? 1.0 : 0.0);
     }
 
     /**
@@ -81,12 +106,15 @@ public class AdaptiveIdManager {
                 .onErrorResume(err -> {
                     log.warn("Strategy {} failed. Failing over to SnowflakeStrategy. Reason: {}",
                             strategy.getStrategyName(), err.getMessage());
+                    idFallbackCounter.increment();
                     return snowflakeStrategy.nextId();
                 })
                 .map(id -> {
                     long elapsedNanos = System.nanoTime() - startNanos;
                     long elapsedMicros = Math.max(1, elapsedNanos / 1000);
                     recordLatency(elapsedMicros);
+                    idTimer.record(elapsedNanos, TimeUnit.NANOSECONDS);
+                    idSuccessCounter.increment();
                     totalGeneratedCount.incrementAndGet();
 
                     int nodeId = IdPacker.extractNodeId(id);
@@ -116,12 +144,15 @@ public class AdaptiveIdManager {
                 .onErrorResume(err -> {
                     log.warn("Batch on strategy {} failed. Failing over to SnowflakeStrategy: {}",
                             strategy.getStrategyName(), err.getMessage());
+                    idFallbackCounter.increment(count);
                     return snowflakeStrategy.nextBatch(count);
                 })
                 .collectList()
                 .map(ids -> {
                     long elapsedNanos = System.nanoTime() - startNanos;
                     double elapsedMicros = elapsedNanos / 1000.0;
+                    idTimer.record(elapsedNanos, TimeUnit.NANOSECONDS);
+                    idSuccessCounter.increment(ids.size());
                     totalGeneratedCount.addAndGet(ids.size());
 
                     return BatchIdResponse.builder()
@@ -139,8 +170,14 @@ public class AdaptiveIdManager {
     public Flux<Long> streamIds(int count) {
         IdGeneratorStrategy strategy = resolveStrategy();
         return strategy.nextBatch(count)
-                .onErrorResume(err -> snowflakeStrategy.nextBatch(count))
-                .doOnNext(id -> totalGeneratedCount.incrementAndGet());
+                .onErrorResume(err -> {
+                    idFallbackCounter.increment(count);
+                    return snowflakeStrategy.nextBatch(count);
+                })
+                .doOnNext(id -> {
+                    idSuccessCounter.increment();
+                    totalGeneratedCount.incrementAndGet();
+                });
     }
 
     /**

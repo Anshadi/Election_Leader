@@ -10,6 +10,10 @@ import com.asthana.Election_Leader.Registry.ZookeeperLeaderElection;
 import com.asthana.Election_Leader.Registry.ZookeeperNodeRegistry;
 import com.asthana.Election_Leader.Strategy.RedisSegmentStrategy;
 import com.asthana.Election_Leader.Strategy.SnowflakeStrategy;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +24,6 @@ import reactor.core.publisher.Mono;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 class AdaptiveIdManagerTest {
@@ -31,11 +34,12 @@ class AdaptiveIdManagerTest {
     private ZookeeperLeaderElection mockLeader;
     private ZookeeperNodeRegistry mockRegistry;
     private AdaptiveIdManager manager;
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setup() {
         appProperties = new AppProperties();
-        appProperties.setEpochMillis(1700000000000L);
+        appProperties.setEpochMillis(1780000000000L);
         appProperties.setStrategy("AUTO");
 
         mockSnowflake = Mockito.mock(SnowflakeStrategy.class);
@@ -48,7 +52,22 @@ class AdaptiveIdManagerTest {
         when(mockSnowflake.getStrategyName()).thenReturn("IN_MEMORY_SNOWFLAKE");
         when(mockRedis.getStrategyName()).thenReturn("REDIS_SEGMENT_DOUBLE_BUFFER");
 
-        manager = new AdaptiveIdManager(appProperties, mockSnowflake, mockRedis, mockLeader, mockRegistry);
+        meterRegistry = new SimpleMeterRegistry();
+        Counter successCounter = meterRegistry.counter("test_success");
+        Counter fallbackCounter = meterRegistry.counter("test_fallback");
+        Timer timer = meterRegistry.timer("test_timer");
+
+        manager = new AdaptiveIdManager(
+                appProperties,
+                mockSnowflake,
+                mockRedis,
+                mockLeader,
+                mockRegistry,
+                successCounter,
+                fallbackCounter,
+                timer,
+                meterRegistry
+        );
     }
 
     @Test

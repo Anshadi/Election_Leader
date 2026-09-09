@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # Distributed Coordination
+  zookeeper:
+    image: zookeeper:3.9.1
+    container_name: election-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=0.0.0.0:2888:3888;2181
+      ZOO_4LW_COMMANDS_WHITELIST: "srvr,ruok,stat"
+    networks:
+      - cluster-net
+
+  # Distributed Cache for Range Allocations
+  redis:
+    image: redis:7-alpine
+    container_name: election-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - cluster-net
+
+  # Election Leader Cluster Node 1 (Primary / Candidate)
+  app-node-1:
+    build: .
+    container_name: election-app-node-1
+    ports:
+      - "8001:8001"
+    environment:
+      SERVER_PORT: 8001
+      ADAPTIVE_ZOOKEEPER_ENABLED: "true"
+      ADAPTIVE_ZOOKEEPER_CONNECT_STRING: "zookeeper:2181"
+      SPRING_DATA_REDIS_HOST: "redis"
+      SPRING_DATA_REDIS_PORT: 6379
+      ADAPTIVE_STRATEGY: "AUTO"
+    depends_on:
+      - zookeeper
+      - redis
+    networks:
+      - cluster-net
+
+  # Election Leader Cluster Node 2 (Worker / Standby)
+  app-node-2:
+    build: .
+    container_name: election-app-node-2
+    ports:
+      - "8002:8001"
+    environment:
+      SERVER_PORT: 8001
+      ADAPTIVE_ZOOKEEPER_ENABLED: "true"
+      ADAPTIVE_ZOOKEEPER_CONNECT_STRING: "zookeeper:2181"
+      SPRING_DATA_REDIS_HOST: "redis"
+      SPRING_DATA_REDIS_PORT: 6379
+      ADAPTIVE_STRATEGY: "AUTO"
+    depends_on:
+      - zookeeper
+      - redis
+    networks:
+      - cluster-net
+
+  # Election Leader Cluster Node 3 (Worker / Standby)
+  app-node-3:
+    build: .
+    container_name: election-app-node-3
+    ports:
+      - "8003:8001"
+    environment:
+      SERVER_PORT: 8001
+      ADAPTIVE_ZOOKEEPER_ENABLED: "true"
+      ADAPTIVE_ZOOKEEPER_CONNECT_STRING: "zookeeper:2181"
+      SPRING_DATA_REDIS_HOST: "redis"
+      SPRING_DATA_REDIS_PORT: 6379
+      ADAPTIVE_STRATEGY: "AUTO"
+    depends_on:
+      - zookeeper
+      - redis
+    networks:
+      - cluster-net
+
+  # Prometheus Metric Scraper
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: election-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - cluster-net
+
+  # Grafana Dashboard UI
+  grafana:
+    image: grafana/grafana:latest
+    container_name: election-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - cluster-net
+
+networks:
+  cluster-net:
+    driver: bridge
