@@ -12,6 +12,7 @@ class TelemetryView extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>();
     final metrics = state.latencyMetrics;
+    final activeNode = state.activeNode;
 
     final p50 = metrics?.p50Micros ?? 0.0;
     final p90 = metrics?.p90Micros ?? 0.0;
@@ -22,10 +23,10 @@ class TelemetryView extends StatelessWidget {
     final max = metrics?.maxMicros ?? 0.0;
 
     return CleanPanel(
-      title: 'LATENCY SLA & METRICS',
-      badge: 'HDRHISTOGRAM',
+      title: 'LATENCY SLA & HISTOGRAM',
+      badge: 'HDRHISTOGRAM METRICS',
       trailing: Text(
-        'TOTAL: ' + total.toString() + ' IDs',
+        'TOTAL: $total IDs',
         style: GoogleFonts.jetBrainsMono(
           fontSize: 9.5,
           fontWeight: FontWeight.w600,
@@ -37,28 +38,28 @@ class TelemetryView extends StatelessWidget {
         children: [
           _PercentileRow(
             label: 'P50 (MEDIAN)',
-            value: p50.toStringAsFixed(0) + ' µs',
+            value: '${p50.toStringAsFixed(0)} µs',
             ratio: (p50 / 1000.0).clamp(0.05, 1.0),
             color: AppColors.green,
           ),
           const SizedBox(height: 8),
           _PercentileRow(
             label: 'P90 SLA',
-            value: p90.toStringAsFixed(0) + ' µs',
+            value: '${p90.toStringAsFixed(0)} µs',
             ratio: (p90 / 2000.0).clamp(0.1, 1.0),
             color: AppColors.blue,
           ),
           const SizedBox(height: 8),
           _PercentileRow(
             label: 'P99 SLA',
-            value: p99.toStringAsFixed(0) + ' µs',
+            value: '${p99.toStringAsFixed(0)} µs',
             ratio: (p99 / 5000.0).clamp(0.2, 1.0),
             color: AppColors.accent,
           ),
           const SizedBox(height: 8),
           _PercentileRow(
             label: 'P99.9 MAX',
-            value: p999.toStringAsFixed(0) + ' µs',
+            value: '${p999.toStringAsFixed(0)} µs',
             ratio: (p999 / 10000.0).clamp(0.3, 1.0),
             color: AppColors.amber,
           ),
@@ -77,9 +78,9 @@ class TelemetryView extends StatelessWidget {
               runSpacing: 6,
               alignment: WrapAlignment.spaceBetween,
               children: [
-                _StatItem(label: 'MEAN LATENCY', value: mean.toStringAsFixed(1) + ' µs'),
-                _StatItem(label: 'MAX SPIKE', value: max.toStringAsFixed(0) + ' µs'),
-                const _StatItem(label: 'STATUS', value: 'ONLINE (:8001)'),
+                _StatItem(label: 'MEAN LATENCY', value: '${mean.toStringAsFixed(1)} µs'),
+                _StatItem(label: 'MAX SPIKE', value: '${max.toStringAsFixed(0)} µs'),
+                _StatItem(label: 'TARGET PROBE', value: '${activeNode.label} (:${activeNode.port})'),
               ],
             ),
           ),

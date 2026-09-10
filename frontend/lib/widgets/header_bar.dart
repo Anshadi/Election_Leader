@@ -10,11 +10,10 @@ class HeaderBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>();
-    final cluster = state.clusterStatus;
-    final isLeader = cluster?.isLeader ?? true;
-    final nodeId = cluster?.nodeId ?? 0;
-    final strategy = cluster?.activeStrategy ?? 'AUTO';
-    final zkConnected = cluster?.zookeeperConnected ?? false;
+    final activeNode = state.activeNode;
+    final isLeader = activeNode.isLeader && activeNode.isOnline;
+    final zkConnected = activeNode.zkConnected;
+    final onlineNodes = state.nodes.where((n) => n.isOnline).length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -79,19 +78,19 @@ class HeaderBar extends StatelessWidget {
                 activeColor: AppColors.accent,
               ),
               _StatusPill(
-                label: 'NODE',
-                value: '#' + nodeId.toString(),
+                label: 'TARGET',
+                value: '${activeNode.label} (:${activeNode.port})',
                 activeColor: AppColors.blue,
+              ),
+              _StatusPill(
+                label: 'CLUSTER',
+                value: '$onlineNodes/3 ONLINE',
+                activeColor: onlineNodes > 0 ? AppColors.green : AppColors.amber,
               ),
               _StatusPill(
                 label: 'ROLE',
                 value: isLeader ? 'LEADER' : 'STANDBY',
-                activeColor: isLeader ? AppColors.green : AppColors.textSecondary,
-              ),
-              _StatusPill(
-                label: 'STRATEGY',
-                value: strategy,
-                activeColor: AppColors.textPrimary,
+                activeColor: isLeader ? AppColors.accent : AppColors.textSecondary,
               ),
               _StatusPill(
                 label: 'ZK QUORUM',
@@ -130,7 +129,7 @@ class _StatusPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            label + ': ',
+            '$label: ',
             style: GoogleFonts.jetBrainsMono(
               fontSize: 10.5,
               fontWeight: FontWeight.w500,

@@ -15,6 +15,7 @@ class IdGeneratorView extends StatelessWidget {
     final id = state.currentId;
     final idStr = id != null ? id.id.toString() : '---';
     final isStreaming = state.isStreaming;
+    final activeNode = state.activeNode;
 
     String timeStr = '--:--:--';
     if (id != null && id.dateTime.isNotEmpty) {
@@ -32,17 +33,33 @@ class IdGeneratorView extends StatelessWidget {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.green.withOpacity(0.12),
+          color: (activeNode.isOnline ? AppColors.green : AppColors.amber).withOpacity(0.12),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppColors.green.withOpacity(0.3)),
-        ),
-        child: Text(
-          'HEALTHY',
-          style: GoogleFonts.jetBrainsMono(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.green,
+          border: Border.all(
+            color: (activeNode.isOnline ? AppColors.green : AppColors.amber).withOpacity(0.35),
           ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: activeNode.isOnline ? AppColors.green : AppColors.amber,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              '${activeNode.label.toUpperCase()} (:${activeNode.port})',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: activeNode.isOnline ? AppColors.green : AppColors.amber,
+              ),
+            ),
+          ],
         ),
       ),
       child: Column(
@@ -93,7 +110,7 @@ class IdGeneratorView extends StatelessWidget {
                     Clipboard.setData(ClipboardData(text: idStr));
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('ID ' + idStr + ' copied to clipboard', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
+                        content: Text('ID $idStr copied to clipboard', style: GoogleFonts.jetBrainsMono(fontSize: 12)),
                         duration: const Duration(seconds: 1),
                         behavior: SnackBarBehavior.floating,
                         backgroundColor: AppColors.surfaceElevated,
@@ -151,8 +168,8 @@ class IdGeneratorView extends StatelessWidget {
                   value: timeStr,
                 ),
                 _ParamColumn(
-                  label: 'NODE ID',
-                  value: id != null ? '#' + id.nodeId.toString() : '#0',
+                  label: 'ZK NODE ID',
+                  value: id != null ? '#${id.nodeId}' : '#${activeNode.nodeId}',
                 ),
                 _ParamColumn(
                   label: 'SEQUENCE',
@@ -160,7 +177,7 @@ class IdGeneratorView extends StatelessWidget {
                 ),
                 _ParamColumn(
                   label: 'STRATEGY',
-                  value: id?.strategy ?? 'AUTO',
+                  value: id?.strategy ?? activeNode.strategy,
                 ),
               ],
             ),

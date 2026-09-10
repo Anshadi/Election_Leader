@@ -32,29 +32,41 @@ class ClusterStatus {
 }
 
 class NodeInstanceInfo {
-  final int index;
+  final String id;
+  final String label;
   final int port;
-  final String url;
-  final bool isOnline;
-  final bool isLeader;
-  final int nodeId;
-  final String strategy;
-  final bool zkConnected;
-  final bool redisConnected;
-  final double latencyMicros;
-  final String? lastGeneratedId;
+  final String baseUrl;
+  bool isOnline;
+  bool isLeader;
+  int nodeId;
+  String strategy;
+  bool zkConnected;
+  bool redisConnected;
+  double pingMs;
+  String? lastGeneratedId;
+  int? lastSequence;
+  int generatedCount;
+  bool isGenerating;
+  List<String> registeredNodes;
+  String? errorMessage;
 
   NodeInstanceInfo({
-    required this.index,
+    required this.id,
+    required this.label,
     required this.port,
-    required this.url,
-    required this.isOnline,
-    required this.isLeader,
-    required this.nodeId,
-    required this.strategy,
-    required this.zkConnected,
-    required this.redisConnected,
-    this.latencyMicros = 0.0,
+    required this.baseUrl,
+    this.isOnline = false,
+    this.isLeader = false,
+    this.nodeId = 0,
+    this.strategy = 'AUTO',
+    this.zkConnected = false,
+    this.redisConnected = false,
+    this.pingMs = 0.0,
     this.lastGeneratedId,
+    this.lastSequence,
+    this.generatedCount = 0,
+    this.isGenerating = false,
+    this.registeredNodes = const [],
+    this.errorMessage,
   });
 }

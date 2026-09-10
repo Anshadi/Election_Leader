@@ -15,9 +15,9 @@ class LiveTerminalLog extends StatelessWidget {
 
     return CleanPanel(
       title: 'EVENT STREAM / CLI LOG',
-      badge: 'REACTIVE STREAM',
+      badge: 'REACTIVE SSE STREAM',
       trailing: Text(
-        ' EVENTS',
+        '${items.length} EVENTS',
         style: GoogleFonts.jetBrainsMono(
           fontSize: 9.5,
           fontWeight: FontWeight.w600,
