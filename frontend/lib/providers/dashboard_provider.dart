@@ -108,7 +108,7 @@ class DashboardProvider extends ChangeNotifier {
   void selectNode(int index) {
     if (index >= 0 && index < nodes.length) {
       selectedNodeIndex = index;
-      pushFeed('Switched active node to  (:)', 'Target endpoint updated');
+      pushFeed('Switched active node to ${nodes[index].label} (:${nodes[index].port})', 'Target endpoint updated');
       notifyListeners();
     }
   }
@@ -133,16 +133,19 @@ class DashboardProvider extends ChangeNotifier {
       targetNode.generatedCount++;
 
       pushFeed(
-        'Generated ID:  []',
-        'Node # | Seq:  | ',
+        'Generated ID: ${res.id} [${targetNode.label}]',
+        'Node #${res.nodeId} | Seq: ${res.sequence} | ${res.strategy}',
       );
 
+      // Auto-decode the current ID
       final parsed = await apiService.decodeId(res.id.toString(), baseUrl: targetNode.baseUrl);
       if (parsed != null) {
         parsedId = parsed;
+      } else {
+        parsedId = ParsedId.parseLocal(res.id);
       }
     } else {
-      pushFeed('Failed to generate on ', 'Target  unreachable');
+      pushFeed('Failed to generate on ${targetNode.label}', 'Target ${targetNode.baseUrl} unreachable');
     }
 
     if (isManual) {
@@ -168,8 +171,8 @@ class DashboardProvider extends ChangeNotifier {
       targetNode.lastGeneratedId = res.ids.last.toString();
 
       pushFeed(
-        'Batch: generated  IDs on ',
-        'Duration:  µs | Strategy: ',
+        'Batch: generated ${res.count} IDs on ${targetNode.label}',
+        'Duration: ${res.durationMicros.toStringAsFixed(1)} µs | Strategy: ${res.strategy}',
       );
 
       final lastId = res.ids.last;
@@ -182,6 +185,16 @@ class DashboardProvider extends ChangeNotifier {
           dateTime: parsed.dateTime,
           nodeId: parsed.nodeId,
           sequence: parsed.sequence,
+          strategy: res.strategy,
+        );
+      } else {
+        parsedId = ParsedId.parseLocal(lastId);
+        currentId = IdResponse(
+          id: lastId,
+          timestamp: parsedId!.absoluteTimestamp,
+          dateTime: parsedId!.dateTime,
+          nodeId: parsedId!.nodeId,
+          sequence: parsedId!.sequence,
           strategy: res.strategy,
         );
       }
@@ -222,14 +235,24 @@ class DashboardProvider extends ChangeNotifier {
       final elapsed = (sw.elapsedMicroseconds / 1000.0).toStringAsFixed(1);
 
       pushFeed(
-        '? Broadcast: Generated ${successful.length} IDs across cluster concurrently',
+        '⚡ Broadcast: Generated ${successful.length} IDs across cluster concurrently',
         'Time: $elapsed ms | $collisionText',
       );
+
+      // Push individual node ID results to feed
+      for (final res in successful) {
+        pushFeed(
+          'Node #${res.nodeId} -> ID: ${res.id}',
+          'Seq: #${res.sequence} | Strategy: ${res.strategy}',
+        );
+      }
 
       currentId = successful.last;
       final parsed = await apiService.decodeId(successful.last.id.toString(), baseUrl: activeNode.baseUrl);
       if (parsed != null) {
         parsedId = parsed;
+      } else {
+        parsedId = ParsedId.parseLocal(successful.last.id);
       }
     } else {
       pushFeed('Broadcast Failed', 'No active nodes responded');
@@ -243,10 +266,21 @@ class DashboardProvider extends ChangeNotifier {
     final cleanInput = input.trim();
     if (cleanInput.isEmpty) return;
 
+    final parsedNumber = int.tryParse(cleanInput);
+
     final res = await apiService.decodeId(cleanInput, baseUrl: activeNode.baseUrl);
     if (res != null) {
       parsedId = res;
-      pushFeed('Decoded ID: ', 'Node: # | Seq: #');
+      pushFeed('Decoded ID: ${res.id}', 'Node: #${res.nodeId} | Seq: #${res.sequence}');
+      notifyListeners();
+    } else if (parsedNumber != null) {
+      // Offline local parser fallback
+      final local = ParsedId.parseLocal(parsedNumber);
+      parsedId = local;
+      pushFeed('Decoded ID: ${local.id}', 'Node: #${local.nodeId} | Seq: #${local.sequence}');
+      notifyListeners();
+    } else {
+      pushFeed('Decode Failed', 'Invalid 64-bit integer input: $cleanInput');
       notifyListeners();
     }
   }
@@ -254,7 +288,7 @@ class DashboardProvider extends ChangeNotifier {
   void toggleStream() {
     isStreaming = !isStreaming;
     if (isStreaming) {
-      pushFeed('Started real-time streaming on ', 'Target: ~100 QPS');
+      pushFeed('Started real-time streaming on ${activeNode.label}', 'Target: ~100 QPS');
       streamTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
         generateSingleId(isManual: false);
       });

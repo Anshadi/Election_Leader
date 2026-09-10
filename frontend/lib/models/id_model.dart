@@ -19,10 +19,10 @@ class IdResponse {
     return IdResponse(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
       timestamp: json['timestamp'] is int ? json['timestamp'] : int.tryParse(json['timestamp'].toString()) ?? 0,
-      dateTime: json['dateTime'] ?? '',
+      dateTime: json['dateTime']?.toString() ?? '',
       nodeId: json['nodeId'] is int ? json['nodeId'] : int.tryParse(json['nodeId'].toString()) ?? 0,
       sequence: json['sequence'] is int ? json['sequence'] : int.tryParse(json['sequence'].toString()) ?? 0,
-      strategy: json['strategy'] ?? 'UNKNOWN',
+      strategy: json['strategy']?.toString() ?? 'UNKNOWN',
     );
   }
 }
@@ -48,16 +48,41 @@ class ParsedId {
     required this.binaryRepresentation,
   });
 
+  String get binary64Bit => binaryRepresentation.isNotEmpty
+      ? binaryRepresentation
+      : id.toRadixString(2).padLeft(64, '0');
+
   factory ParsedId.fromJson(Map<String, dynamic> json) {
     return ParsedId(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
-      epochMillis: json['epochMillis'] is int ? json['epochMillis'] : int.tryParse(json['epochMillis'].toString()) ?? 0,
+      epochMillis: json['epochMillis'] is int ? json['epochMillis'] : int.tryParse(json['epochMillis'].toString()) ?? 1704067200000,
       timestampDelta: json['timestampDelta'] is int ? json['timestampDelta'] : int.tryParse(json['timestampDelta'].toString()) ?? 0,
       absoluteTimestamp: json['absoluteTimestamp'] is int ? json['absoluteTimestamp'] : int.tryParse(json['absoluteTimestamp'].toString()) ?? 0,
-      dateTime: json['dateTime'] ?? '',
+      dateTime: json['dateTime']?.toString() ?? '',
       nodeId: json['nodeId'] is int ? json['nodeId'] : int.tryParse(json['nodeId'].toString()) ?? 0,
       sequence: json['sequence'] is int ? json['sequence'] : int.tryParse(json['sequence'].toString()) ?? 0,
-      binaryRepresentation: json['binaryRepresentation'] ?? '',
+      binaryRepresentation: json['binaryRepresentation']?.toString() ?? '',
+    );
+  }
+
+  // Local offline fallback parser for Snowflake 64-bit layout
+  static ParsedId parseLocal(int id, {int epochMillis = 1704067200000}) {
+    final delta = (id >> 28) & 0x7FFFFFFFF;
+    final node = (id >> 16) & 0xFFF;
+    final seq = id & 0xFFFF;
+    final absTime = epochMillis + delta;
+    final dt = '${DateTime.fromMillisecondsSinceEpoch(absTime, isUtc: true).toIso8601String()}Z';
+    final bin = id.toRadixString(2).padLeft(64, '0');
+
+    return ParsedId(
+      id: id,
+      epochMillis: epochMillis,
+      timestampDelta: delta,
+      absoluteTimestamp: absTime,
+      dateTime: dt,
+      nodeId: node,
+      sequence: seq,
+      binaryRepresentation: bin,
     );
   }
 }
@@ -81,7 +106,7 @@ class BatchResponse {
     return BatchResponse(
       ids: parsedIds,
       count: json['count'] ?? parsedIds.length,
-      strategy: json['strategy'] ?? '',
+      strategy: json['strategy']?.toString() ?? '',
       durationMicros: (json['durationMicros'] as num?)?.toDouble() ?? 0.0,
     );
   }
