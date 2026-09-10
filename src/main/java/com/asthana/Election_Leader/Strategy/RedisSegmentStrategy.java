@@ -187,6 +187,20 @@ public class RedisSegmentStrategy implements IdGeneratorStrategy {
 
     @Override
     public boolean isAvailable() {
+        if (!isRedisHealthy) {
+            try {
+                Long newMax = segmentRepository.allocateSegment(appProperties.getRedis().getBaseBlockSize())
+                        .block(Duration.ofMillis(400));
+                if (newMax != null) {
+                    int step = appProperties.getRedis().getBaseBlockSize();
+                    long min = newMax - step + 1;
+                    segmentBuffer.getCurrentSegment().init(min, newMax, step);
+                    isInitialized.set(true);
+                    isRedisHealthy = true;
+                    log.info("RedisSegmentStrategy auto-recovered! Re-allocated segment [{}, {}], step={}", min, newMax, step);
+                }
+            } catch (Exception ignored) {}
+        }
         return isRedisHealthy && isInitialized.get();
     }
 
