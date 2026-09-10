@@ -19,4 +19,7 @@ public class ClusterNodeDto {
     private String activeStrategy;
     private long epochMillis;
     private List<String> registeredNodes;
+    private long totalGenerated;
+    private Long lastAllocatedId;
+    private Integer lastSequence;
 }

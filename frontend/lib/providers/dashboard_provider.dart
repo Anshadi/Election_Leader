@@ -9,9 +9,9 @@ class DashboardProvider extends ChangeNotifier {
   final ElectionLeaderApiService apiService = ElectionLeaderApiService();
 
   final List<NodeInstanceInfo> nodes = [
-    NodeInstanceInfo(id: 'node-1', label: 'Node 1', port: 8001, baseUrl: 'http://localhost:8001', segmentMin: 1, segmentMax: 1024),
-    NodeInstanceInfo(id: 'node-2', label: 'Node 2', port: 8002, baseUrl: 'http://localhost:8002', segmentMin: 1025, segmentMax: 2048),
-    NodeInstanceInfo(id: 'node-3', label: 'Node 3', port: 8003, baseUrl: 'http://localhost:8003', segmentMin: 2049, segmentMax: 3072),
+    NodeInstanceInfo(id: 'node-0', label: 'Node 0', port: 8001, baseUrl: 'http://localhost:8001', segmentMin: 1, segmentMax: 1024),
+    NodeInstanceInfo(id: 'node-1', label: 'Node 1', port: 8002, baseUrl: 'http://localhost:8002', segmentMin: 1025, segmentMax: 2048),
+    NodeInstanceInfo(id: 'node-2', label: 'Node 2', port: 8003, baseUrl: 'http://localhost:8003', segmentMin: 2049, segmentMax: 3072),
   ];
 
   int selectedNodeIndex = 0;
@@ -30,6 +30,9 @@ class DashboardProvider extends ChangeNotifier {
           activeStrategy: activeNode.strategy,
           epochMillis: DateTime.now().millisecondsSinceEpoch,
           registeredNodes: activeNode.registeredNodes,
+          totalGenerated: activeNode.generatedCount,
+          lastAllocatedId: int.tryParse(activeNode.lastGeneratedId ?? ''),
+          lastSequence: activeNode.lastSequence,
         );
       }
     }
@@ -83,7 +86,9 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   Future<void> pollAllNodes() async {
-    final futures = nodes.map((node) async {
+    final futures = nodes.asMap().entries.map((entry) async {
+      final idx = entry.key;
+      final node = entry.value;
       final sw = Stopwatch()..start();
       final status = await apiService.getClusterStatus(baseUrl: node.baseUrl);
       sw.stop();
@@ -98,6 +103,39 @@ class DashboardProvider extends ChangeNotifier {
         node.registeredNodes = status.registeredNodes;
         node.pingMs = sw.elapsedMicroseconds / 1000.0;
         node.errorMessage = null;
+
+        // Synchronize external generations (e.g. browser tab refreshes or cURL calls directly to node ports)
+        if (status.totalGenerated > node.generatedCount) {
+          node.generatedCount = status.totalGenerated;
+          if (status.lastAllocatedId != null) {
+            node.lastGeneratedId = status.lastAllocatedId.toString();
+            node.lastSequence = status.lastSequence;
+
+            final extTitle = 'External ID: ${status.lastAllocatedId} [${node.label}]';
+            final extSub = 'Node #${node.nodeId} | Seq: #${status.lastSequence ?? 0} | Sync from port :${node.port}';
+            node.addFeed(extTitle, extSub);
+            pushFeed(extTitle, extSub, nodeId: node.id);
+
+            if (idx == selectedNodeIndex || currentId == null) {
+              final parsed = await apiService.decodeId(status.lastAllocatedId.toString(), baseUrl: node.baseUrl);
+              final parsedRes = parsed ?? ParsedId.parseLocal(status.lastAllocatedId!);
+              final newIdRes = IdResponse(
+                id: status.lastAllocatedId!,
+                timestamp: parsedRes.absoluteTimestamp,
+                dateTime: parsedRes.dateTime,
+                nodeId: node.nodeId,
+                sequence: status.lastSequence ?? parsedRes.sequence,
+                strategy: status.activeStrategy,
+              );
+              node.lastIdResponse = newIdRes;
+              node.lastParsedId = parsedRes;
+              if (idx == selectedNodeIndex) {
+                currentId = newIdRes;
+                parsedId = parsedRes;
+              }
+            }
+          }
+        }
       } else {
         node.isOnline = false;
         node.isLeader = false;
@@ -120,7 +158,12 @@ class DashboardProvider extends ChangeNotifier {
   void selectNode(int index) {
     if (index >= 0 && index < nodes.length) {
       selectedNodeIndex = index;
-      pushFeed('Switched active target to ${nodes[index].label} (:${nodes[index].port})', 'Target endpoint updated', nodeId: nodes[index].id);
+      final sel = nodes[index];
+      if (sel.lastIdResponse != null) {
+        currentId = sel.lastIdResponse;
+        parsedId = sel.lastParsedId ?? (sel.lastIdResponse != null ? ParsedId.parseLocal(sel.lastIdResponse!.id) : null);
+      }
+      pushFeed('Switched active target to ${sel.label} (:${sel.port})', 'Target endpoint updated', nodeId: sel.id);
       notifyListeners();
     }
   }
@@ -144,11 +187,11 @@ class DashboardProvider extends ChangeNotifier {
 
     final res = await apiService.getNextId(baseUrl: targetNode.baseUrl);
     if (res != null) {
-      currentId = res;
       qpsCounter++;
       targetNode.lastGeneratedId = res.id.toString();
       targetNode.lastSequence = res.sequence;
       targetNode.generatedCount++;
+      targetNode.lastIdResponse = res;
 
       if (res.sequence > targetNode.segmentMax) {
         int steps = ((res.sequence - targetNode.segmentMin) / 1024).floor();
@@ -163,10 +206,12 @@ class DashboardProvider extends ChangeNotifier {
       targetNode.addFeed(title, subtitle);
 
       final parsed = await apiService.decodeId(res.id.toString(), baseUrl: targetNode.baseUrl);
-      if (parsed != null) {
-        parsedId = parsed;
-      } else {
-        parsedId = ParsedId.parseLocal(res.id);
+      final decodedParsed = parsed ?? ParsedId.parseLocal(res.id);
+      targetNode.lastParsedId = decodedParsed;
+
+      if (targetIndex == selectedNodeIndex) {
+        currentId = res;
+        parsedId = decodedParsed;
       }
     } else {
       final failTitle = 'Failed to generate on ${targetNode.label}';
@@ -196,8 +241,9 @@ class DashboardProvider extends ChangeNotifier {
     if (res != null && res.ids.isNotEmpty) {
       qpsCounter += res.count;
       targetNode.generatedCount += res.count;
-      targetNode.lastGeneratedId = res.ids.last.toString();
-      targetNode.lastSequence = res.ids.last;
+      final lastId = res.ids.last;
+      targetNode.lastGeneratedId = lastId.toString();
+      targetNode.lastSequence = res.ids.length;
 
       final title = 'Batch: generated ${res.count} IDs on ${targetNode.label}';
       final subtitle = 'Duration: ${res.durationMicros.toStringAsFixed(1)} µs | ${res.strategy}';
@@ -205,28 +251,22 @@ class DashboardProvider extends ChangeNotifier {
       pushFeed(title, subtitle, nodeId: targetNode.id);
       targetNode.addFeed(title, subtitle);
 
-      final lastId = res.ids.last;
       final parsed = await apiService.decodeId(lastId.toString(), baseUrl: targetNode.baseUrl);
-      if (parsed != null) {
-        parsedId = parsed;
-        currentId = IdResponse(
-          id: parsed.id,
-          timestamp: parsed.absoluteTimestamp,
-          dateTime: parsed.dateTime,
-          nodeId: parsed.nodeId,
-          sequence: parsed.sequence,
-          strategy: res.strategy,
-        );
-      } else {
-        parsedId = ParsedId.parseLocal(lastId);
-        currentId = IdResponse(
-          id: lastId,
-          timestamp: parsedId!.absoluteTimestamp,
-          dateTime: parsedId!.dateTime,
-          nodeId: parsedId!.nodeId,
-          sequence: parsedId!.sequence,
-          strategy: res.strategy,
-        );
+      final decodedParsed = parsed ?? ParsedId.parseLocal(lastId);
+      final batchIdRes = IdResponse(
+        id: lastId,
+        timestamp: decodedParsed.absoluteTimestamp,
+        dateTime: decodedParsed.dateTime,
+        nodeId: decodedParsed.nodeId,
+        sequence: decodedParsed.sequence,
+        strategy: res.strategy,
+      );
+      targetNode.lastIdResponse = batchIdRes;
+      targetNode.lastParsedId = decodedParsed;
+
+      if (targetIndex == selectedNodeIndex) {
+        currentId = batchIdRes;
+        parsedId = decodedParsed;
       }
     }
 
@@ -251,6 +291,7 @@ class DashboardProvider extends ChangeNotifier {
           node.lastGeneratedId = res.id.toString();
           node.lastSequence = res.sequence;
           node.generatedCount++;
+          node.lastIdResponse = res;
           qpsCounter++;
           final title = 'Broadcast ID: ${res.id} [${node.label}]';
           final sub = 'Seq: #${res.sequence} | Node #${res.nodeId}';
@@ -282,13 +323,14 @@ class DashboardProvider extends ChangeNotifier {
         );
       }
 
-      currentId = successful.last;
-      final parsed = await apiService.decodeId(successful.last.id.toString(), baseUrl: activeNode.baseUrl);
-      if (parsed != null) {
-        parsedId = parsed;
-      } else {
-        parsedId = ParsedId.parseLocal(successful.last.id);
-      }
+      final activeNodeRes = successful.firstWhere(
+        (r) => r.nodeId == activeNode.nodeId,
+        orElse: () => successful.last,
+      );
+      currentId = activeNodeRes;
+      final parsed = await apiService.decodeId(activeNodeRes.id.toString(), baseUrl: activeNode.baseUrl);
+      parsedId = parsed ?? ParsedId.parseLocal(activeNodeRes.id);
+      activeNode.lastParsedId = parsedId;
     } else {
       pushFeed('Broadcast Failed', 'No active nodes responded');
     }

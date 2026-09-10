@@ -1,3 +1,5 @@
+import 'id_model.dart';
+
 class ClusterStatus {
   final int nodeId;
   final bool isLeader;
@@ -6,6 +8,9 @@ class ClusterStatus {
   final String activeStrategy;
   final int epochMillis;
   final List<String> registeredNodes;
+  final int totalGenerated;
+  final int? lastAllocatedId;
+  final int? lastSequence;
 
   ClusterStatus({
     required this.nodeId,
@@ -15,18 +20,30 @@ class ClusterStatus {
     required this.activeStrategy,
     required this.epochMillis,
     required this.registeredNodes,
+    this.totalGenerated = 0,
+    this.lastAllocatedId,
+    this.lastSequence,
   });
 
   factory ClusterStatus.fromJson(Map<String, dynamic> json) {
     var nodesList = json['registeredNodes'] as List? ?? [];
     return ClusterStatus(
-      nodeId: json['nodeId'] is int ? json['nodeId'] : int.tryParse(json['nodeId'].toString()) ?? 0,
+      nodeId: json['nodeId'] is int ? json['nodeId'] : int.tryParse(json['nodeId']?.toString() ?? '') ?? 0,
       isLeader: json['leader'] == true || json['isLeader'] == true,
       zookeeperConnected: json['zookeeperConnected'] == true,
       redisConnected: json['redisConnected'] == true,
       activeStrategy: json['activeStrategy']?.toString() ?? 'AUTO',
-      epochMillis: json['epochMillis'] is int ? json['epochMillis'] : int.tryParse(json['epochMillis'].toString()) ?? 0,
+      epochMillis: json['epochMillis'] is int ? json['epochMillis'] : int.tryParse(json['epochMillis']?.toString() ?? '') ?? 0,
       registeredNodes: nodesList.map((e) => e.toString()).toList(),
+      totalGenerated: json['totalGenerated'] is int
+          ? json['totalGenerated']
+          : int.tryParse(json['totalGenerated']?.toString() ?? '0') ?? 0,
+      lastAllocatedId: json['lastAllocatedId'] is int
+          ? json['lastAllocatedId']
+          : int.tryParse(json['lastAllocatedId']?.toString() ?? ''),
+      lastSequence: json['lastSequence'] is int
+          ? json['lastSequence']
+          : int.tryParse(json['lastSequence']?.toString() ?? ''),
     );
   }
 }
@@ -52,6 +69,8 @@ class NodeInstanceInfo {
   int segmentMax;
   List<String> registeredNodes;
   String? errorMessage;
+  IdResponse? lastIdResponse;
+  ParsedId? lastParsedId;
   final List<Map<String, String>> nodeFeed = [];
 
   NodeInstanceInfo({
@@ -75,6 +94,8 @@ class NodeInstanceInfo {
     this.segmentMax = 1024,
     this.registeredNodes = const [],
     this.errorMessage,
+    this.lastIdResponse,
+    this.lastParsedId,
   });
 
   double get segmentUsageRatio {
@@ -93,7 +114,7 @@ class NodeInstanceInfo {
       'subtitle': subtitle,
       'time': DateTime.now().toIso8601String().substring(11, 19),
     });
-    if (nodeFeed.length > 25) {
+    if (nodeFeed.length > 30) {
       nodeFeed.removeLast();
     }
   }

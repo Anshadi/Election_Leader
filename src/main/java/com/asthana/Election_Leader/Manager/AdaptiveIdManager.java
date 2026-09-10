@@ -45,6 +45,8 @@ public class AdaptiveIdManager {
     // HdrHistogram for measuring latency in microseconds up to 100,000,000 (100 seconds)
     private final SingleWriterRecorder latencyRecorder = new SingleWriterRecorder(1, 100_000_000L, 3);
     private final AtomicLong totalGeneratedCount = new AtomicLong(0);
+    private final AtomicLong lastAllocatedId = new AtomicLong(0);
+    private final AtomicLong lastAllocatedSequence = new AtomicLong(0);
 
     @Autowired
     public AdaptiveIdManager(
@@ -122,6 +124,9 @@ public class AdaptiveIdManager {
                     long absTimestamp = IdPacker.extractAbsoluteTimestamp(id, appProperties.getEpochMillis());
                     String isoDate = Instant.ofEpochMilli(absTimestamp).toString();
 
+                    lastAllocatedId.set(id);
+                    lastAllocatedSequence.set(sequence);
+
                     return IdResponse.builder()
                             .id(id)
                             .timestamp(absTimestamp)
@@ -155,6 +160,12 @@ public class AdaptiveIdManager {
                     idSuccessCounter.increment(ids.size());
                     totalGeneratedCount.addAndGet(ids.size());
 
+                    if (!ids.isEmpty()) {
+                        long last = ids.get(ids.size() - 1);
+                        lastAllocatedId.set(last);
+                        lastAllocatedSequence.set(IdPacker.extractSequence(last));
+                    }
+
                     return BatchIdResponse.builder()
                             .ids(ids)
                             .count(ids.size())
@@ -177,6 +188,8 @@ public class AdaptiveIdManager {
                 .doOnNext(id -> {
                     idSuccessCounter.increment();
                     totalGeneratedCount.incrementAndGet();
+                    lastAllocatedId.set(id);
+                    lastAllocatedSequence.set(IdPacker.extractSequence(id));
                 });
     }
 
@@ -207,6 +220,7 @@ public class AdaptiveIdManager {
      * Returns the cluster and node health status.
      */
     public ClusterNodeDto getClusterStatus() {
+        long lastId = lastAllocatedId.get();
         return ClusterNodeDto.builder()
                 .nodeId(nodeRegistry.getNodeId())
                 .isLeader(leaderElection.isLeader())
@@ -215,6 +229,9 @@ public class AdaptiveIdManager {
                 .activeStrategy(resolveStrategy().getStrategyName())
                 .epochMillis(appProperties.getEpochMillis())
                 .registeredNodes(nodeRegistry.getRegisteredNodes())
+                .totalGenerated(totalGeneratedCount.get())
+                .lastAllocatedId(lastId != 0 ? lastId : null)
+                .lastSequence(lastId != 0 ? (int) lastAllocatedSequence.get() : null)
                 .build();
     }
 

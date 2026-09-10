@@ -17,35 +17,23 @@ class LiveTerminalLog extends StatelessWidget {
     return CleanPanel(
       title: 'EVENT STREAM / CLI LOG',
       badge: 'REACTIVE SSE STREAM',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      trailing: Wrap(
+        spacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _FilterTab(
             label: 'ALL',
             isSelected: filter == 'ALL',
             onTap: () => state.setLogFilter('ALL'),
           ),
+          ...state.nodes.map((n) => _FilterTab(
+            label: n.label.toUpperCase(),
+            isSelected: filter == n.id,
+            onTap: () => state.setLogFilter(n.id),
+          )),
           const SizedBox(width: 4),
-          _FilterTab(
-            label: 'NODE 1',
-            isSelected: filter == 'node-1',
-            onTap: () => state.setLogFilter('node-1'),
-          ),
-          const SizedBox(width: 4),
-          _FilterTab(
-            label: 'NODE 2',
-            isSelected: filter == 'node-2',
-            onTap: () => state.setLogFilter('node-2'),
-          ),
-          const SizedBox(width: 4),
-          _FilterTab(
-            label: 'NODE 3',
-            isSelected: filter == 'node-3',
-            onTap: () => state.setLogFilter('node-3'),
-          ),
-          const SizedBox(width: 8),
           Text(
-            '${items.length} EVENTS',
+            ' EVENTS',
             style: GoogleFonts.jetBrainsMono(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
