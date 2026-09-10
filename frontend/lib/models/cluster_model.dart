@@ -24,7 +24,7 @@ class ClusterStatus {
       isLeader: json['leader'] == true || json['isLeader'] == true,
       zookeeperConnected: json['zookeeperConnected'] == true,
       redisConnected: json['redisConnected'] == true,
-      activeStrategy: json['activeStrategy'] ?? 'AUTO',
+      activeStrategy: json['activeStrategy']?.toString() ?? 'AUTO',
       epochMillis: json['epochMillis'] is int ? json['epochMillis'] : int.tryParse(json['epochMillis'].toString()) ?? 0,
       registeredNodes: nodesList.map((e) => e.toString()).toList(),
     );
@@ -47,8 +47,12 @@ class NodeInstanceInfo {
   int? lastSequence;
   int generatedCount;
   bool isGenerating;
+  bool isStreaming;
+  int segmentMin;
+  int segmentMax;
   List<String> registeredNodes;
   String? errorMessage;
+  final List<Map<String, String>> nodeFeed = [];
 
   NodeInstanceInfo({
     required this.id,
@@ -66,7 +70,31 @@ class NodeInstanceInfo {
     this.lastSequence,
     this.generatedCount = 0,
     this.isGenerating = false,
+    this.isStreaming = false,
+    this.segmentMin = 1,
+    this.segmentMax = 1024,
     this.registeredNodes = const [],
     this.errorMessage,
   });
+
+  double get segmentUsageRatio {
+    if (lastSequence == null || segmentMax <= segmentMin) return 0.0;
+    int offset = (lastSequence! - segmentMin + 1);
+    if (offset < 0) offset = 0;
+    int span = segmentMax - segmentMin + 1;
+    if (span <= 0) span = 1024;
+    double ratio = (offset % span) / span.toDouble();
+    return ratio.clamp(0.0, 1.0);
+  }
+
+  void addFeed(String title, String subtitle) {
+    nodeFeed.insert(0, {
+      'title': title,
+      'subtitle': subtitle,
+      'time': DateTime.now().toIso8601String().substring(11, 19),
+    });
+    if (nodeFeed.length > 25) {
+      nodeFeed.removeLast();
+    }
+  }
 }

@@ -16,6 +16,7 @@ class ClusterNodesView extends StatelessWidget {
     final onlineCount = nodes.where((n) => n.isOnline).length;
     final totalCount = nodes.length;
     final isBroadcasting = state.isBroadcasting;
+    final isClusterStreaming = state.isClusterStreaming;
 
     NodeInstanceInfo? leaderNode;
     try {
@@ -62,6 +63,7 @@ class ClusterNodesView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Cluster Control & Summary Header
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -104,15 +106,55 @@ class ClusterNodesView extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
+                    // Stream All 3 Nodes Concurrently Button
+                    InkWell(
+                      onTap: () => state.toggleClusterStream(),
+                      borderRadius: BorderRadius.circular(5),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isClusterStreaming
+                              ? AppColors.red.withOpacity(0.18)
+                              : AppColors.accent.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color: isClusterStreaming
+                                ? AppColors.red.withOpacity(0.5)
+                                : AppColors.accent.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isClusterStreaming ? Icons.stop_circle_outlined : Icons.sensors_rounded,
+                              size: 13,
+                              color: isClusterStreaming ? AppColors.red : AppColors.accent,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isClusterStreaming ? 'Stop Cluster Stream' : '⚡ Stream All Nodes',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isClusterStreaming ? AppColors.red : AppColors.accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Fire All Nodes Concurrently
                     InkWell(
                       onTap: isBroadcasting ? null : () => state.broadcastGenerateAll(),
                       borderRadius: BorderRadius.circular(5),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppColors.accent.withOpacity(0.15),
+                          color: AppColors.surfaceElevated,
                           borderRadius: BorderRadius.circular(5),
-                          border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -132,17 +174,19 @@ class ClusterNodesView extends StatelessWidget {
                               const SizedBox(width: 4),
                             ],
                             Text(
-                              'Fire All Nodes Concurrently',
+                              'Fire All Concurrently',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.accent,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
+
+                    // Scan
                     InkWell(
                       onTap: () => state.pollAllNodes(),
                       borderRadius: BorderRadius.circular(5),
@@ -177,6 +221,7 @@ class ClusterNodesView extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
+          // 3-Node Matrix Cards Deck
           LayoutBuilder(
             builder: (context, constraints) {
               final isMultiCol = constraints.maxWidth > 750;
@@ -194,6 +239,7 @@ class ClusterNodesView extends StatelessWidget {
                           isSelected: state.selectedNodeIndex == i,
                           onSelect: () => state.selectNode(i),
                           onFire: () => state.generateSingleId(isManual: true, nodeIndex: i),
+                          onToggleStream: () => state.toggleNodeStream(i),
                         ),
                       ),
                     ],
@@ -210,6 +256,7 @@ class ClusterNodesView extends StatelessWidget {
                         isSelected: state.selectedNodeIndex == i,
                         onSelect: () => state.selectNode(i),
                         onFire: () => state.generateSingleId(isManual: true, nodeIndex: i),
+                        onToggleStream: () => state.toggleNodeStream(i),
                       ),
                     ],
                   ],
@@ -219,6 +266,7 @@ class ClusterNodesView extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
+          // Infrastructure Dependencies Health Pills
           Wrap(
             spacing: 8,
             runSpacing: 6,
@@ -261,6 +309,7 @@ class _NodeDeckCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onSelect;
   final VoidCallback onFire;
+  final VoidCallback onToggleStream;
 
   const _NodeDeckCard({
     required this.node,
@@ -268,16 +317,20 @@ class _NodeDeckCard extends StatelessWidget {
     required this.isSelected,
     required this.onSelect,
     required this.onFire,
+    required this.onToggleStream,
   });
 
   @override
   Widget build(BuildContext context) {
     final isOnline = node.isOnline;
     final isLeader = node.isLeader && isOnline;
+    final isStreaming = node.isStreaming;
 
     Color borderColor = AppColors.border;
     if (isSelected) {
       borderColor = AppColors.accent;
+    } else if (isStreaming) {
+      borderColor = AppColors.green;
     } else if (isLeader) {
       borderColor = AppColors.accent.withOpacity(0.4);
     }
@@ -289,12 +342,13 @@ class _NodeDeckCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: borderColor,
-          width: isSelected ? 1.5 : 1.0,
+          width: (isSelected || isStreaming) ? 1.5 : 1.0,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header: Node Label, Port, Target/Stream Tag
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -328,26 +382,50 @@ class _NodeDeckCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (isSelected)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    'TARGET',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accent,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isStreaming)
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.green.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: AppColors.green.withOpacity(0.4)),
+                      ),
+                      child: Text(
+                        'STREAMING',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.green,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  if (isSelected)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        'TARGET',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 8),
 
+          // Role Badge
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -394,6 +472,77 @@ class _NodeDeckCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
+          // Allocated Range & Segment Health Box
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'LEASED SEGMENT RANGE',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    Text(
+                      '[${node.segmentMin} .. ${node.segmentMax}]',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: node.segmentUsageRatio > 0 ? node.segmentUsageRatio : 0.05,
+                    minHeight: 4,
+                    backgroundColor: AppColors.surfaceElevated,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      node.segmentUsageRatio > 0.8 ? AppColors.accent : AppColors.green,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Double-Buffered Leaf Prefetch @ 20%',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 8,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    Text(
+                      '${(node.segmentUsageRatio * 100).toStringAsFixed(0)}% Used',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Node Parameter Matrix
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -408,18 +557,18 @@ class _NodeDeckCard extends StatelessWidget {
                   value: isOnline ? '#${node.nodeId}' : '---',
                   valueColor: AppColors.accent,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 _ParamRow(
                   label: 'Strategy',
                   value: isOnline ? node.strategy : '---',
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 _ParamRow(
                   label: 'Ping SLA',
                   value: isOnline ? '${node.pingMs.toStringAsFixed(1)} ms' : 'N/A',
                   valueColor: isOnline ? AppColors.green : AppColors.textMuted,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 _ParamRow(
                   label: 'ZK & Redis',
                   value: isOnline
@@ -430,8 +579,9 @@ class _NodeDeckCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
+          // Last Generated Sequence Display
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
@@ -454,7 +604,7 @@ class _NodeDeckCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      node.generatedCount > 0 ? '${node.generatedCount} IDs' : '0 IDs',
+                      node.generatedCount > 0 ? '${node.generatedCount} Total IDs' : '0 Total IDs',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 8.5,
                         color: AppColors.textSecondary,
@@ -464,9 +614,11 @@ class _NodeDeckCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 SelectableText(
-                  node.lastGeneratedId ?? 'No ID generated yet',
+                  node.lastGeneratedId != null
+                      ? '${node.lastGeneratedId} (Seq: #${node.lastSequence ?? 0})'
+                      : 'No ID generated yet',
                   style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w600,
                     color: node.lastGeneratedId != null ? AppColors.textPrimary : AppColors.textMuted,
                   ),
@@ -474,11 +626,14 @@ class _NodeDeckCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
+          // Action Buttons: Fire, Stream, Set Target
           Row(
             children: [
+              // Fire 1 ID
               Expanded(
+                flex: 3,
                 child: InkWell(
                   onTap: (isOnline && !node.isGenerating) ? onFire : null,
                   borderRadius: BorderRadius.circular(4),
@@ -497,7 +652,7 @@ class _NodeDeckCard extends StatelessWidget {
                               child: CircularProgressIndicator(strokeWidth: 1.5, valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent)),
                             )
                           : Text(
-                              '⚡ Fire ID',
+                              '⚡ Fire',
                               style: GoogleFonts.inter(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
@@ -508,9 +663,53 @@ class _NodeDeckCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
 
+              // Individual Stream Toggle
               Expanded(
+                flex: 3,
+                child: InkWell(
+                  onTap: isOnline ? onToggleStream : null,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isStreaming
+                          ? AppColors.red.withOpacity(0.18)
+                          : isOnline
+                              ? AppColors.surfaceElevated
+                              : AppColors.background,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isStreaming
+                            ? AppColors.red.withOpacity(0.5)
+                            : isOnline
+                                ? AppColors.border
+                                : AppColors.border.withOpacity(0.5),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        isStreaming ? '⏹ Stop' : 'Stream',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: isStreaming
+                              ? AppColors.red
+                              : isOnline
+                                  ? AppColors.accent
+                                  : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+
+              // Set Target
+              Expanded(
+                flex: 4,
                 child: InkWell(
                   onTap: onSelect,
                   borderRadius: BorderRadius.circular(4),
@@ -525,7 +724,7 @@ class _NodeDeckCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        isSelected ? '✓ Active Target' : 'Set Target',
+                        isSelected ? '✓ Target' : 'Set Target',
                         style: GoogleFonts.inter(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,

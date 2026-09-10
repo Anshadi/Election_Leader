@@ -11,21 +11,51 @@ class LiveTerminalLog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>();
-    final items = state.feedItems;
+    final items = state.filteredFeedItems;
+    final filter = state.selectedLogFilter;
 
     return CleanPanel(
       title: 'EVENT STREAM / CLI LOG',
       badge: 'REACTIVE SSE STREAM',
-      trailing: Text(
-        '${items.length} EVENTS',
-        style: GoogleFonts.jetBrainsMono(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textMuted,
-        ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _FilterTab(
+            label: 'ALL',
+            isSelected: filter == 'ALL',
+            onTap: () => state.setLogFilter('ALL'),
+          ),
+          const SizedBox(width: 4),
+          _FilterTab(
+            label: 'NODE 1',
+            isSelected: filter == 'node-1',
+            onTap: () => state.setLogFilter('node-1'),
+          ),
+          const SizedBox(width: 4),
+          _FilterTab(
+            label: 'NODE 2',
+            isSelected: filter == 'node-2',
+            onTap: () => state.setLogFilter('node-2'),
+          ),
+          const SizedBox(width: 4),
+          _FilterTab(
+            label: 'NODE 3',
+            isSelected: filter == 'node-3',
+            onTap: () => state.setLogFilter('node-3'),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${items.length} EVENTS',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
       ),
       child: Container(
-        height: 170,
+        height: 175,
         decoration: BoxDecoration(
           color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(6),
@@ -34,9 +64,9 @@ class LiveTerminalLog extends StatelessWidget {
         child: items.isEmpty
             ? Center(
                 child: Text(
-                  'No activity recorded. Generate IDs above.',
+                  'No activity recorded for this filter. Generate or stream IDs above.',
                   style: GoogleFonts.jetBrainsMono(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     color: AppColors.textMuted,
                   ),
                 ),
@@ -47,11 +77,42 @@ class LiveTerminalLog extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   final isFirst = index == 0;
+                  final nodeTag = item['nodeId'] ?? 'ALL';
+                  final time = item['time'] ?? '';
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (time.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Text(
+                              time,
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 9.5,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        if (nodeTag != 'ALL')
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Text(
+                              nodeTag.toUpperCase(),
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                          ),
                         Text(
                           '> ',
                           style: GoogleFonts.jetBrainsMono(
@@ -86,6 +147,40 @@ class LiveTerminalLog extends StatelessWidget {
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class _FilterTab extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterTab({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(3),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent : AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 8.5,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }

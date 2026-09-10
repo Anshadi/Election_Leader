@@ -48,9 +48,13 @@ class ParsedId {
     required this.binaryRepresentation,
   });
 
-  String get binary64Bit => binaryRepresentation.isNotEmpty
-      ? binaryRepresentation
-      : id.toRadixString(2).padLeft(64, '0');
+  String get binary64Bit {
+    if (binaryRepresentation.isNotEmpty) {
+      return binaryRepresentation;
+    }
+    String raw = id.toRadixString(2).padLeft(64, '0');
+    return '${raw.substring(0, 1)} ${raw.substring(1, 36)} ${raw.substring(36, 48)} ${raw.substring(48, 64)}';
+  }
 
   factory ParsedId.fromJson(Map<String, dynamic> json) {
     return ParsedId(
@@ -65,7 +69,6 @@ class ParsedId {
     );
   }
 
-  // Local offline fallback parser for Snowflake 64-bit layout
   static ParsedId parseLocal(int id, {int epochMillis = 1704067200000}) {
     final delta = (id >> 28) & 0x7FFFFFFFF;
     final node = (id >> 16) & 0xFFF;
@@ -73,6 +76,7 @@ class ParsedId {
     final absTime = epochMillis + delta;
     final dt = '${DateTime.fromMillisecondsSinceEpoch(absTime, isUtc: true).toIso8601String()}Z';
     final bin = id.toRadixString(2).padLeft(64, '0');
+    final formattedBin = '${bin.substring(0, 1)} ${bin.substring(1, 36)} ${bin.substring(36, 48)} ${bin.substring(48, 64)}';
 
     return ParsedId(
       id: id,
@@ -82,7 +86,7 @@ class ParsedId {
       dateTime: dt,
       nodeId: node,
       sequence: seq,
-      binaryRepresentation: bin,
+      binaryRepresentation: formattedBin,
     );
   }
 }

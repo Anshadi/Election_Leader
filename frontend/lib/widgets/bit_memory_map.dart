@@ -13,12 +13,12 @@ class BitMemoryMap extends StatefulWidget {
 }
 
 class _BitMemoryMapState extends State<BitMemoryMap> {
-  int selectedSegment = 1; // 0=Sign, 1=Timestamp, 2=Node, 3=Sequence
-  final TextEditingController _decodeController = TextEditingController();
+  int selectedSegment = 1;
+  final TextEditingController _customIdController = TextEditingController();
 
   @override
   void dispose() {
-    _decodeController.dispose();
+    _customIdController.dispose();
     super.dispose();
   }
 
@@ -27,74 +27,135 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
     final state = context.watch<DashboardProvider>();
     final parsed = state.parsedId;
 
+    final id = parsed != null ? parsed.id.toString() : '---';
     final deltaMs = parsed?.timestampDelta ?? 0;
     final nodeId = parsed?.nodeId ?? 0;
     final seq = parsed?.sequence ?? 0;
-    final timeStr = parsed?.dateTime ?? '2026-09-09T00:00:00.000Z';
-    final binary = parsed?.binaryRepresentation ?? '0 00000000000000000000000000000000000 000000000000 0000000000000000';
+    final binary = parsed?.binary64Bit ?? ('0' * 64);
+
+    String timeStr = '--:--:--';
+    if (parsed != null && parsed.dateTime.isNotEmpty) {
+      final parts = parsed.dateTime.split('T');
+      if (parts.length > 1) {
+        timeStr = parts[1].replaceAll('Z', '');
+      } else {
+        timeStr = parsed.dateTime;
+      }
+    }
 
     return CleanPanel(
-      title: '64-BIT MEMORY ALLOCATION MAP',
-      badge: 'BIT-PACKED ARITHMETIC',
+      title: '64-BIT BIT-PACKED ALLOCATION MATRIX',
+      badge: 'MEMORY LAYOUT',
+      trailing: Text(
+        'DEC: $id',
+        style: GoogleFonts.jetBrainsMono(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Decode Custom ID Search Bar
+          // Decode Custom ID Search Field
           Row(
             children: [
               Expanded(
                 child: Container(
-                  height: 38,
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceElevated,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: TextField(
-                    controller: _decodeController,
+                    controller: _customIdController,
                     style: GoogleFonts.jetBrainsMono(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: AppColors.textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Paste any 64-bit ID to decode fields...',
+                      hintText: 'Enter any 64-bit ID or Snowflake integer (e.g. 1025, 318729182371928371)...',
                       hintStyle: GoogleFonts.jetBrainsMono(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: AppColors.textMuted,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       border: InputBorder.none,
                       isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
                     ),
+                    onSubmitted: (val) {
+                      state.decodeCustomId(val);
+                      _customIdController.clear();
+                    },
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               InkWell(
-                onTap: () => state.decodeCustomId(_decodeController.text),
+                onTap: () {
+                  state.decodeCustomId(_customIdController.text);
+                  _customIdController.clear();
+                },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
+                    color: AppColors.accent,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.border),
                   ),
-                  child: Text(
-                    'Decode',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.code_rounded, size: 14, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Decode',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
 
-          // 64-Bit Memory Allocation Ribbon
+          // Quick Sample Chips
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              _SampleChip(
+                label: 'Sample Node 1 ID',
+                value: '1025',
+                onTap: () => state.decodeCustomId('1025'),
+              ),
+              _SampleChip(
+                label: 'Sample Node 2 ID',
+                value: '2049',
+                onTap: () => state.decodeCustomId('2049'),
+              ),
+              _SampleChip(
+                label: 'Sample 64-bit Snowflake',
+                value: '318729182371928371',
+                onTap: () => state.decodeCustomId('318729182371928371'),
+              ),
+              if (state.currentId != null)
+                _SampleChip(
+                  label: 'Latest ID (#${state.currentId!.id})',
+                  value: state.currentId!.id.toString(),
+                  onTap: () => state.decodeCustomId(state.currentId!.id.toString()),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
           Text(
             'FIELD ALLOCATION MAP (CLICK SEGMENT TO INSPECT):',
             style: GoogleFonts.jetBrainsMono(
@@ -154,7 +215,6 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
           ),
           const SizedBox(height: 12),
 
-          // Detail Inspection Box
           _buildInspectionBox(selectedSegment, deltaMs, timeStr, nodeId, seq, binary),
         ],
       ),
@@ -252,13 +312,44 @@ class _BitMemoryMapState extends State<BitMemoryMap> {
           ),
           const SizedBox(height: 6),
           SelectableText(
-            'Binary: $binary',
+            'Binary (64-Bit): $binary',
             style: GoogleFonts.jetBrainsMono(
               fontSize: 9.5,
               color: AppColors.textMuted,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SampleChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _SampleChip({required this.label, required this.value, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(3),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 9,
+            color: AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
