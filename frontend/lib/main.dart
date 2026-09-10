@@ -55,7 +55,7 @@ class DashboardScreen extends StatelessWidget {
               padding: padding,
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1400),
+                  constraints: const BoxConstraints(maxWidth: 1560),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -63,12 +63,12 @@ class DashboardScreen extends StatelessWidget {
                       const HeaderBar(),
                       const SizedBox(height: 18),
 
-                      // Two-Column Grid Layout (Linear / Raycast Style)
+                      // Balanced Two-Column Grid Layout
                       if (isWide)
                         const Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Left Main Column
+                            // Left Main Column: Generator, Memory Map, Latency SLA & Live SSE Feed
                             Expanded(
                               flex: 6,
                               child: Column(
@@ -76,21 +76,21 @@ class DashboardScreen extends StatelessWidget {
                                   IdGeneratorView(),
                                   SizedBox(height: 18),
                                   BitMemoryMap(),
+                                  SizedBox(height: 18),
+                                  TelemetryView(),
+                                  SizedBox(height: 18),
+                                  LiveTerminalLog(),
                                 ],
                               ),
                             ),
                             SizedBox(width: 18),
 
-                            // Right Secondary Column
+                            // Right Column: Multi-Node Topology & Consensus Matrix Deck
                             Expanded(
-                              flex: 5,
+                              flex: 6,
                               child: Column(
                                 children: [
                                   ClusterNodesView(),
-                                  SizedBox(height: 18),
-                                  TelemetryView(),
-                                  SizedBox(height: 18),
-                                  LiveTerminalLog(),
                                 ],
                               ),
                             ),
@@ -101,11 +101,11 @@ class DashboardScreen extends StatelessWidget {
                         const SizedBox(height: 14),
                         const BitMemoryMap(),
                         const SizedBox(height: 14),
-                        const ClusterNodesView(),
-                        const SizedBox(height: 14),
                         const TelemetryView(),
                         const SizedBox(height: 14),
                         const LiveTerminalLog(),
+                        const SizedBox(height: 14),
+                        const ClusterNodesView(),
                       ],
                       const SizedBox(height: 24),
 
